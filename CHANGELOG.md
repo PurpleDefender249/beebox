@@ -35,7 +35,8 @@ First release.
   direct downloads.
 - Packages for Debian, Ubuntu, Kali, Mint, Fedora and Arch (x86_64 and
   ARM64), built as position-independent executables with full RELRO, with
-  distribution-correct service handling (debhelper-style on Debian, presets
+  distribution-correct service handling (debhelper-style plus an enable
+  preset on Debian and Kali, whose default policy disables new services; presets
   on Fedora, opt-in on Arch); man page; bash, zsh and fish completions.
 - `beebox doctor` explains how to enable kernel crash logs (UEFI pstore),
   and a hidden `beebox dump` command prints raw recordings for bug reports.

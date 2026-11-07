@@ -12,8 +12,10 @@ esac
 if command -v deb-systemd-helper >/dev/null 2>&1; then
     # Removes only the mask deb-systemd-helper adds when the package is removed.
     deb-systemd-helper unmask beebox.service >/dev/null || true
-    # "was-enabled" is true for new installations, so they get enabled; an
-    # upgrade keeps whatever the administrator chose.
+    # "was-enabled" is true for new installations, so they get enabled (via
+    # "systemctl preset" and the 80-beebox.preset file this package ships,
+    # which beats a distribution-wide "disable *.service" such as Kali's);
+    # an upgrade keeps whatever the administrator chose.
     if deb-systemd-helper --quiet was-enabled beebox.service; then
         deb-systemd-helper enable beebox.service >/dev/null || true
     else

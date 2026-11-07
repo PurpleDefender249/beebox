@@ -57,6 +57,9 @@ deb)
     apt-get update -qq
     apt-get install -y -qq "./$pkg" >/dev/null
     dpkg -s beebox | grep -q '^Status: install ok installed' || fail "not installed"
+    # Enabled through the shipped preset, even where the distribution's
+    # default preset disables new services (Kali).
+    [ "$(systemctl is-enabled beebox.service 2>/dev/null)" = enabled ] || fail "not enabled after install"
     common_checks
     step "reinstall (upgrade path)"
     apt-get install -y -qq --reinstall "./$pkg" >/dev/null
@@ -76,6 +79,7 @@ rpm)
     step "install $pkg"
     dnf install -y -q "./$pkg"
     rpm -V beebox || fail "rpm -V found changed files"
+    [ "$(systemctl is-enabled beebox.service 2>/dev/null)" = enabled ] || fail "not enabled after install"
     common_checks
     test -f /usr/lib/systemd/system-preset/80-beebox.preset || fail "preset missing"
     if dnf install -y -q rpmlint >/dev/null 2>&1; then
@@ -93,6 +97,8 @@ arch)
     step "install $pkg"
     pacman -Sy --noconfirm --needed systemd >/dev/null
     pacman -U --noconfirm "$pkg"
+    # Arch packages leave enabling to the user.
+    [ "$(systemctl is-enabled beebox.service 2>/dev/null)" = disabled ] || fail "Arch package enabled the service"
     common_checks
     if pacman -S --noconfirm --needed namcap >/dev/null 2>&1; then
         step "namcap"

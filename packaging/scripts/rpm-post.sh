@@ -2,14 +2,15 @@
 # Fedora, openSUSE: runs after beebox is installed ($1 = 1) or upgraded
 # ($1 >= 2). Enabling follows the preset shipped in the package
 # (/usr/lib/systemd/system-preset/80-beebox.preset), which an administrator
-# can override in /etc/systemd/system-preset/.
+# can override in /etc/systemd/system-preset/. Like Fedora's %systemd_post,
+# the preset is applied even when systemd isn't running (image builds).
+if [ "$1" = 1 ] && command -v systemctl >/dev/null 2>&1; then
+    systemctl --no-reload preset beebox.service >/dev/null 2>&1 || :
+fi
 if [ -d /run/systemd/system ]; then
     systemctl daemon-reload >/dev/null 2>&1 || :
-    if [ "$1" = 1 ]; then
-        systemctl --no-reload preset beebox.service >/dev/null 2>&1 || :
-        if systemctl is-enabled --quiet beebox.service 2>/dev/null; then
-            systemctl start beebox.service >/dev/null 2>&1 || :
-        fi
+    if [ "$1" = 1 ] && systemctl is-enabled --quiet beebox.service 2>/dev/null; then
+        systemctl start beebox.service >/dev/null 2>&1 || :
     fi
 fi
 if [ "$1" = 1 ]; then

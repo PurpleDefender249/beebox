@@ -27,8 +27,13 @@ contents:
     file_info: { mode: 0755 }
   - src: packaging/systemd/beebox.service
     dst: /usr/lib/systemd/system/beebox.service
-  # Enable-by-default preset for Fedora/openSUSE (Debian enables new
-  # services through deb-systemd-helper; Arch leaves it to the user).
+  # Enable-by-default preset. Debian's deb-systemd-helper and Fedora's
+  # scriptlets both enable new services with "systemctl preset", and some
+  # distributions (Kali, Fedora) ship a "disable *.service" default policy
+  # that sorts after this file. Arch leaves enabling to the user.
+  - src: packaging/systemd/80-beebox.preset
+    dst: /usr/lib/systemd/system-preset/80-beebox.preset
+    packager: deb
   - src: packaging/systemd/80-beebox.preset
     dst: /usr/lib/systemd/system-preset/80-beebox.preset
     packager: rpm
