@@ -1,0 +1,14 @@
+/build/
+/beebox
+*.test
+*.out
+coverage.*
+testdata/fuzz/
+.idea/
+.vscode/
+*.swp
+
+# Signing keys must never be committed (see docs/MAINTAINING.md)
+*signing-key*.asc
+*revoke*.asc
+*.gpg

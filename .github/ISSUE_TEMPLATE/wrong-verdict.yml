@@ -1,0 +1,42 @@
+name: Wrong or unclear verdict
+description: BeeBox blamed the wrong thing, or couldn't tell what happened
+labels: [verdict]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What actually happened?
+      description: What you were doing, what you saw, and what you think the cause was.
+    validations:
+      required: true
+  - type: textarea
+    id: verdict
+    attributes:
+      label: What did BeeBox say?
+      description: Paste the output of `beebox last --plain`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Full report
+      description: |
+        Attach or paste `beebox show --json`. It contains no file contents or command-line
+        arguments, and home folder names, IP and MAC addresses are removed — but please read it first.
+      render: json
+  - type: textarea
+    id: dump
+    attributes:
+      label: Raw recording (optional, very helpful)
+      description: |
+        Attach the output of `sudo beebox dump > dump.txt`: the last two minutes the recorder
+        saved before the crash. It shows app names and kernel messages, so please read it first.
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: Distribution and kernel (`uname -r`), and `beebox version`.
+      placeholder: Ubuntu 24.04, 6.11.0-19-generic, beebox 0.1.0
+    validations:
+      required: true

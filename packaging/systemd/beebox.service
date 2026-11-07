@@ -1,0 +1,79 @@
+[Unit]
+Description=BeeBox flight recorder (explains crashes, freezes and power loss)
+Documentation=man:beebox(1) https://github.com/PurpleDefender249/beebox
+After=local-fs.target systemd-journald.service
+# Start before the desktop so the previous boot is analysed early.
+Before=display-manager.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/beebox record
+Restart=on-failure
+RestartSec=2s
+WatchdogSec=30s
+TimeoutStopSec=10s
+
+# Keep recording while the rest of the system struggles.
+OOMScoreAdjust=-900
+# If the kernel's OOM killer ever takes a helper process (journalctl during
+# start-up analysis), carry on recording instead of stopping the service.
+OOMPolicy=continue
+# systemd-oomd should pick anything before the recorder.
+ManagedOOMPreference=avoid
+Nice=-5
+# BeeBox writes only a few kilobytes every few seconds; realtime I/O
+# priority makes sure those writes still reach the disk while the system
+# is swapping heavily, which is exactly when they matter.
+IOSchedulingClass=realtime
+IOSchedulingPriority=4
+MemoryMax=96M
+TasksMax=32
+CPUQuota=25%
+
+StateDirectory=beebox
+StateDirectoryMode=0755
+RuntimeDirectory=beebox
+RuntimeDirectoryMode=0755
+ConfigurationDirectory=beebox
+UMask=0022
+
+# Sandboxing: BeeBox only reads /proc, /sys, the journal and /dev/kmsg, and
+# writes /var/lib/beebox. It never touches the network or home folders.
+#
+# Not used, on purpose:
+#   ProtectKernelLogs  would hide /dev/kmsg, the kernel log BeeBox records.
+#   ProtectProc/ProcSubset  would hide other processes and /proc/pressure.
+#   PrivateUsers  would make CAP_SYSLOG useless for reading /dev/kmsg.
+#   PrivateDevices  adds nothing here: DevicePolicy=closed already limits
+#                   device access to /dev/kmsg (read-only).
+CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+AmbientCapabilities=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+IPAddressDeny=any
+RestrictAddressFamilies=AF_UNIX
+DevicePolicy=closed
+DeviceAllow=/dev/kmsg r
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service @memlock
+SystemCallFilter=~@privileged @resources @mount @swap @reboot @raw-io @module @debug @cpu-emulation @obsolete
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

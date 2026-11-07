@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=BeeBox
+GenericName=Crash reports
+Comment=See why your computer last crashed, froze or lost power
+Exec=beebox view
+Icon=beebox
+Terminal=false
+Categories=System;Monitor;
+Keywords=crash;freeze;black box;flight recorder;out of memory;overheating;

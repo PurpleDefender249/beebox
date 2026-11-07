@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta name="generator" content="BeeBox {{.Version}}">
+{{- if .R}}
+<title>{{.R.Verdict.Title}} — BeeBox report</title>
+{{- else}}
+<title>No crashes recorded — BeeBox</title>
+{{- end}}
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22 width=%22128%22 height=%22128%22%3E%3Cdefs%3E%3CclipPath id=%22beebox-sm-body%22%3E%3Crect x=%22-27%22 y=%22-17%22 width=%2252%22 height=%2235%22 rx=%228%22/%3E%3C/clipPath%3E%3C/defs%3E%3Cpolygon points=%2264,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36%22 fill=%22%231d2125%22 stroke=%22%231d2125%22 stroke-width=%2210%22 stroke-linejoin=%22round%22/%3E%3Cpolygon points=%2264,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36%22 fill=%22none%22 stroke=%22%23f5b301%22 stroke-width=%227%22 stroke-linejoin=%22round%22/%3E%3Cg transform=%22translate(58 70) rotate(-14)%22%3E%3Cellipse cx=%22-3%22 cy=%22-25%22 rx=%2213%22 ry=%2219%22 transform=%22rotate(-24 -3 -25)%22 fill=%22%23e6f0fb%22/%3E%3Crect x=%22-27%22 y=%22-17%22 width=%2252%22 height=%2235%22 rx=%228%22 fill=%22%23f5b301%22/%3E%3Cg clip-path=%22url(%23beebox-sm-body)%22%3E%3Crect x=%22-28%22 y=%22-18%22 width=%2254%22 height=%227%22 fill=%22%23ffd34d%22/%3E%3C/g%3E%3Cg clip-path=%22url(%23beebox-sm-body)%22 fill=%22%231d2125%22%3E%3Crect x=%22-13%22 y=%22-18%22 width=%229%22 height=%2237%22/%3E%3Crect x=%224%22 y=%22-18%22 width=%229%22 height=%2237%22/%3E%3C/g%3E%3Ccircle cx=%2235%22 cy=%221%22 r=%2211%22 fill=%22%231d2125%22 stroke=%22%23f5b301%22 stroke-width=%225%22/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --page: #ffffff;
+  --ink: #1d2125;
+  --ink-2: #545a61;
+  --muted: #6f757c;
+  --rule: #e3e6e9;
+  --code: #f2f4f6;
+  --honey: #f5b301;
+  --on-honey: #000000;
+  --on-honey-2: #3d2b00;
+  --focus: #9a6700;
+  --series: #2a78d6;
+  --series-wash: rgb(42 120 214 / 0.10);
+  --critical: #d03b3b;
+  --grid: #eceef0;
+  --axis: #c9cdd2;
+  --tip: #1d2125;
+  --on-tip: #ffffff;
+  --mono: ui-monospace, "DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", monospace;
+  --sans: system-ui, Cantarell, "Noto Sans", Ubuntu, "DejaVu Sans", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #131518;
+    --ink: #eceef0;
+    --ink-2: #b3b9c0;
+    --muted: #8f959d;
+    --rule: #2a2e33;
+    --code: #1c1f23;
+    --series: #3987e5;
+    --series-wash: rgb(57 135 229 / 0.14);
+    --grid: #22262a;
+    --axis: #3a3f45;
+    --tip: #eceef0;
+    --on-tip: #131518;
+    --focus: #f5b301;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 400 1.0625rem/1.55 var(--sans);
+  font-kerning: normal;
+}
+a { color: inherit; text-underline-offset: 0.18em; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+.skip {
+  position: absolute; left: 1rem; top: -4rem; z-index: 10;
+  background: var(--ink); color: var(--page); padding: 0.6rem 1rem; border-radius: 6px;
+}
+.skip:focus { top: 1rem; }
+.wrap { max-width: 68rem; margin: 0 auto; padding-inline: clamp(1.1rem, 4vw, 3rem); }
+.prose { max-width: 42rem; }
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+/* The verdict band: honey, the one bold element on the page. */
+.band {
+  background: var(--honey);
+  color: var(--on-honey);
+  padding-block: clamp(2rem, 5vw, 3.5rem) clamp(2.25rem, 5vw, 3.75rem);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.band.calm { background: var(--code); color: var(--ink); }
+.band .meta { margin: 0 0 2.25rem; color: var(--on-honey-2); max-width: 46rem; }
+.band.calm .meta { color: var(--ink-2); }
+.band .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; margin: 0 0 1.5rem; letter-spacing: -0.01em; }
+.band .brand svg { width: 2.1rem; height: 2.1rem; flex: none; }
+.cause { margin: 0 0 0.4rem; font-size: 1.125rem; font-weight: 600; }
+h1 {
+  margin: 0;
+  font-size: clamp(2.3rem, 3.6vw + 1.25rem, 4.1rem);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.028em;
+  max-width: 16ch;
+  text-wrap: balance;
+}
+.confidence { margin-top: 1.75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+/* Confidence as a row of honeycomb cells: filled cells are the score. */
+.scale { display: block; height: 2.25rem; width: auto; aspect-ratio: 157 / 44; flex: none; overflow: visible; }
+.scale polygon { fill: transparent; stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; opacity: 0.75; }
+.scale polygon.on { fill: currentColor; opacity: 1; }
+.confidence p { margin: 0; font-weight: 650; }
+
+main { padding-block: clamp(2rem, 4vw, 3rem) 1rem; }
+section { margin-block: 0 clamp(2.5rem, 5vw, 3.75rem); }
+h2 { font-size: 1.5rem; line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 0.9rem; font-weight: 750; }
+h3 { font-size: 1.0625rem; margin: 0 0 0.25rem; font-weight: 650; }
+.lead { font-size: clamp(1.18rem, 0.6vw + 1rem, 1.35rem); line-height: 1.5; margin: 0 0 0.5rem; }
+.hint { color: var(--ink-2); margin: 0 0 1.5rem; }
+
+ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+ol.steps > li { counter-increment: step; position: relative; padding-left: 2.75rem; margin-bottom: 1.4rem; }
+ol.steps > li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: -0.05rem;
+  width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid var(--ink); font-weight: 700; font-size: 0.95rem;
+}
+ol.steps p { margin: 0 0 0.55rem; }
+.cmd { display: flex; align-items: stretch; gap: 0.5rem; max-width: 42rem; }
+.cmd pre {
+  margin: 0; flex: 1; min-width: 0; overflow-x: auto;
+  background: var(--code); border-radius: 6px; padding: 0.6rem 0.8rem;
+  font: 0.92rem/1.5 var(--mono);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+button.copy {
+  font: 600 0.9rem var(--sans); color: var(--ink); background: transparent;
+  border: 1.5px solid var(--axis); border-radius: 6px; padding: 0 0.85rem; cursor: pointer; min-height: 2.5rem; min-width: 5.5rem;
+}
+button.copy:hover { border-color: var(--ink); }
+
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); gap: 2.75rem 2.5rem; }
+figure { margin: 0; }
+figcaption { margin-bottom: 0.75rem; }
+figcaption .sub { color: var(--ink-2); margin: 0; }
+.plot { position: relative; height: 9.5rem; margin: 0 0 1.6rem 3rem; touch-action: pan-y; }
+.plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.plot .grid { stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.plot .base { stroke: var(--axis); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.plot .area { fill: var(--series-wash); stroke: none; }
+.plot .line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.plot .thresh { stroke: var(--critical); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.yt, .xt, .tl { position: absolute; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.yt { right: calc(100% + 0.5rem); transform: translateY(50%); }
+.xt { top: calc(100% + 0.45rem); transform: translateX(-50%); }
+.xt.end { transform: translateX(-100%); color: var(--ink-2); font-weight: 600; }
+.tl { right: 0; transform: translateY(-120%); color: var(--ink-2); }
+.stop { position: absolute; top: -0.4rem; bottom: 0; width: 0; border-left: 2px solid var(--ink); }
+.dot, .hoverdot {
+  position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; transform: translateY(5px);
+  border-radius: 50%; background: var(--series); box-shadow: 0 0 0 2px var(--page); pointer-events: none;
+}
+.hoverdot { width: 12px; height: 12px; margin: -6px 0 0 -6px; transform: translateY(6px); }
+.crosshair { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--muted); pointer-events: none; }
+.tip {
+  position: absolute; top: -0.25rem; transform: translateY(-100%);
+  background: var(--tip); color: var(--on-tip); border-radius: 6px; padding: 0.35rem 0.6rem;
+  font-size: 0.85rem; line-height: 1.3; pointer-events: none; white-space: nowrap; z-index: 2;
+}
+.tip strong { display: block; font-size: 1rem; }
+[hidden] { display: none !important; }
+
+details { margin-top: 0.25rem; }
+summary { cursor: pointer; color: var(--ink-2); width: fit-content; }
+summary:hover { color: var(--ink); }
+table { border-collapse: collapse; margin-top: 0.75rem; font-variant-numeric: tabular-nums; width: 100%; max-width: 42rem; }
+th, td { text-align: left; padding: 0.4rem 1rem 0.4rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 650; }
+td.num, th.num { text-align: right; padding-right: 0; }
+
+ol.evidence { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--rule); }
+ol.evidence li { padding: 0 0 0.9rem 1.25rem; position: relative; }
+ol.evidence li::before { content: ""; position: absolute; left: -6px; top: 0.5rem; width: 10px; height: 10px; border-radius: 50%; background: var(--page); border: 2px solid var(--ink-2); }
+ol.evidence .when { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+ol.evidence .src { color: var(--muted); }
+ol.evidence code { display: block; font: 0.9rem/1.5 var(--mono); overflow-wrap: anywhere; margin-top: 0.15rem; }
+
+.also { list-style: none; padding: 0; margin: 0; max-width: 42rem; }
+.also li { padding: 0.9rem 0; border-top: 1px solid var(--rule); }
+.also li:last-child { border-bottom: 1px solid var(--rule); }
+.also p { margin: 0; color: var(--ink-2); }
+.also .conf { color: var(--ink-2); font-weight: 400; }
+
+footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; color: var(--ink-2); font-size: 0.95rem; }
+footer dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1.5rem; margin: 0 0 1.25rem; }
+footer dt { font-weight: 600; color: var(--ink); }
+footer dd { margin: 0; overflow-wrap: anywhere; }
+footer p { max-width: 42rem; }
+code.inline { font: 0.92em var(--mono); background: var(--code); padding: 0.1em 0.35em; border-radius: 4px; }
+
+.table-scroll { overflow-x: auto; }
+@media (max-width: 34rem) {
+  .plot { margin-left: 2.6rem; }
+  .cmd { flex-direction: column; }
+  button.copy { align-self: flex-start; }
+  footer dl { grid-template-columns: 1fr; }
+  footer dd { margin-bottom: 0.5rem; }
+}
+@media print {
+  .skip, button.copy, .crosshair, .tip, .hoverdot { display: none !important; }
+  .charts { grid-template-columns: 1fr 1fr; }
+  section { break-inside: avoid-page; }
+}
+@media (forced-colors: active) {
+  .band { border-bottom: 2px solid CanvasText; }
+  .plot .line { stroke: CanvasText; }
+  .plot .area { fill: none; }
+  .dot, .hoverdot { background: CanvasText; forced-color-adjust: none; }
+  .scale polygon { stroke: CanvasText; }
+  .scale polygon.on { fill: CanvasText; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to the report</a>
+{{- if .Empty}}
+<header class="band calm">
+  <div class="wrap">
+    <p class="brand">{{template "logo"}}BeeBox</p>
+    <h1>No crashes recorded yet</h1>
+    <p class="meta" style="margin-top:1.5rem">{{.Empty.Message}}</p>
+  </div>
+</header>
+<main id="content" class="wrap">
+  <section class="prose">
+    <h2>What happens next</h2>
+    <p>BeeBox keeps a rolling record of the last few minutes: memory, disk, temperatures, battery and the kernel's warnings. If your computer freezes, crashes or loses power, BeeBox reads that record when the computer starts again and writes a report explaining what happened.</p>
+    <p>To check that everything is set up to catch the next one, run <code class="inline">beebox doctor</code> in a terminal.</p>
+  </section>
+</main>
+{{- else}}
+{{- with .R}}
+<header class="band">
+  <div class="wrap">
+    <p class="brand">{{template "logo"}}BeeBox</p>
+    {{- if .Sample}}
+    <p class="meta"><strong>Sample report.</strong> Nothing happened to your computer: this shows what BeeBox tells you after a real crash.</p>
+    {{- end}}
+    <p class="meta">This report covers the boot that ended on <time datetime="{{iso .LastSeen}}">{{longDate .LastSeen}}</time>{{if $.Uptime}}, after running for {{$.Uptime}}{{end}}.</p>
+    <p class="cause">{{if .Clean}}Why it shut down{{else}}Probable cause{{end}}</p>
+    <h1>{{.Verdict.Title}}</h1>
+    {{- if gt $.Level 0}}
+    <div class="confidence">
+      <svg class="scale" viewBox="0 0 157 44" role="img" aria-label="Confidence: {{word .Verdict.Confidence}}, {{.Verdict.Confidence}} percent, on a four-step scale from unclear to very likely">
+        <polygon points="20.0,2.0 36.5,12.0 36.5,32.0 20.0,42.0 3.5,32.0 3.5,12.0"{{if ge $.Level 1}} class="on"{{end}}/>
+        <polygon points="59.0,2.0 75.5,12.0 75.5,32.0 59.0,42.0 42.5,32.0 42.5,12.0"{{if ge $.Level 2}} class="on"{{end}}/>
+        <polygon points="98.0,2.0 114.5,12.0 114.5,32.0 98.0,42.0 81.5,32.0 81.5,12.0"{{if ge $.Level 3}} class="on"{{end}}/>
+        <polygon points="137.0,2.0 153.5,12.0 153.5,32.0 137.0,42.0 120.5,32.0 120.5,12.0"{{if ge $.Level 4}} class="on"{{end}}/>
+      </svg>
+      <p aria-hidden="true">{{word .Verdict.Confidence}} ({{.Verdict.Confidence}}% confidence)</p>
+    </div>
+    {{- end}}
+  </div>
+</header>
+<main id="content" class="wrap">
+  <section class="prose" aria-labelledby="what-happened">
+    <h2 id="what-happened" class="visually-hidden">What happened</h2>
+    <p class="lead">{{.Verdict.Summary}}</p>
+  </section>
+
+  {{- if .Verdict.Advice}}
+  <section aria-labelledby="todo">
+    <h2 id="todo">What you can do</h2>
+    <ol class="steps">
+      {{- range .Verdict.Advice}}
+      <li>
+        <p>{{.Text}}</p>
+        {{- if .Command}}
+        <div class="cmd">
+          <pre><code>{{.Command}}</code></pre>
+          <button type="button" class="copy" data-copy="{{.Command}}" hidden>Copy</button>
+        </div>
+        {{- end}}
+      </li>
+      {{- end}}
+    </ol>
+  </section>
+  {{- end}}
+
+  {{- if $.Charts}}
+  <section aria-labelledby="timeline">
+    <h2 id="timeline">The minutes before it stopped</h2>
+    <p class="hint prose">BeeBox measured these once a second. The line at the right edge of each chart marks the moment recording stopped. Hover over a chart, or focus it and use the arrow keys, to read exact values.</p>
+    <div class="charts">
+      {{- range $.Charts}}
+      <figure aria-labelledby="{{.ID}}-t">
+        <figcaption id="{{.ID}}-t"><h3>{{.Title}}</h3><p class="sub">{{.Caption}}</p></figcaption>
+        <div class="plot" tabindex="0" role="img" aria-label="{{.AriaLabel}}" data-points="{{.Points}}" data-unit="{{.Unit}}">
+          <svg viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            {{- range .YTicks}}
+            <line class="grid" x1="0" x2="1000" y1="{{printf "%.1f" (ypx .Pos)}}" y2="{{printf "%.1f" (ypx .Pos)}}"/>
+            {{- end}}
+            <line class="base" x1="0" x2="1000" y1="200" y2="200"/>
+            {{- with .Threshold}}
+            <line class="thresh" x1="0" x2="1000" y1="{{printf "%.1f" (ypx .Pos)}}" y2="{{printf "%.1f" (ypx .Pos)}}"/>
+            {{- end}}
+            <path class="area" d="{{.Area}}"/>
+            <path class="line" d="{{.Line}}"/>
+          </svg>
+          {{- range .YTicks}}
+          <span class="yt" aria-hidden="true" style="bottom: {{printf "%.2f" .Pos}}%">{{.Label}}</span>
+          {{- end}}
+          {{- range .XTicks}}
+          <span class="xt" aria-hidden="true" style="left: {{printf "%.2f" .Pos}}%">{{.Label}}</span>
+          {{- end}}
+          <span class="xt end" aria-hidden="true" style="left: 100%">stopped</span>
+          {{- with .Threshold}}
+          <span class="tl" aria-hidden="true" style="bottom: {{printf "%.2f" .Pos}}%">{{.Label}}</span>
+          {{- end}}
+          <span class="stop" aria-hidden="true" style="left: 100%"></span>
+          <span class="dot" aria-hidden="true" style="left: {{printf "%.2f" .EndX}}%; bottom: {{printf "%.2f" .EndY}}%"></span>
+          <span class="crosshair" aria-hidden="true" hidden></span>
+          <span class="hoverdot" aria-hidden="true" hidden></span>
+          <span class="tip" aria-hidden="true" hidden></span>
+        </div>
+        <details>
+          <summary>Show the numbers</summary>
+          <table>
+            <caption class="visually-hidden">{{.Title}} over time</caption>
+            <thead><tr><th scope="col">Time</th><th scope="col" class="num">{{.Title}}</th></tr></thead>
+            <tbody>
+              {{- range .Rows}}
+              <tr><td><time datetime="{{iso .Time}}">{{clock .Time}}</time></td><td class="num">{{.Value}}</td></tr>
+              {{- end}}
+            </tbody>
+          </table>
+        </details>
+      </figure>
+      {{- end}}
+    </div>
+  </section>
+  {{- end}}
+
+  {{- if .Verdict.Evidence}}
+  <section aria-labelledby="evidence">
+    <h2 id="evidence">Evidence</h2>
+    <p class="hint prose">What BeeBox found, in the order it happened.</p>
+    <ol class="evidence">
+      {{- range .Verdict.Evidence}}
+      <li>
+        {{- if hasTime .Time}}<time class="when" datetime="{{iso .Time}}">{{clock .Time}}</time> {{end}}<span class="src">from the {{if eq .Source "recorder"}}recorder{{else if eq .Source "pstore"}}saved crash log{{else if eq .Source "kernel"}}kernel log{{else}}system journal{{end}}</span>
+        <code>{{.Text}}</code>
+      </li>
+      {{- end}}
+    </ol>
+  </section>
+  {{- end}}
+
+  {{- if .TopMem}}
+  <section aria-labelledby="apps">
+    <h2 id="apps">Apps using the most memory {{if .TopMemAt.IsZero}}at the end{{else}}when memory was lowest ({{clock .TopMemAt}}){{end}}</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">App</th><th scope="col" class="num">Memory</th><th scope="col" class="num">Growth (last 10 min)</th><th scope="col" class="num">Processes</th></tr></thead>
+      <tbody>
+        {{- range .TopMem}}
+        <tr><td>{{display .Name}}</td><td class="num">{{mb .MemMB}}</td><td class="num">{{if ge .GrowthMB 1.0}}+{{mb .GrowthMB}}{{else}}—{{end}}</td><td class="num">{{.Count}}</td></tr>
+        {{- end}}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  {{- end}}
+
+  {{- if or .Others .Context}}
+  <section aria-labelledby="also">
+    <h2 id="also">Also noticed</h2>
+    <ul class="also">
+      {{- range .Context}}
+      <li><h3>{{.Title}}</h3><p>{{.Summary}}</p></li>
+      {{- end}}
+      {{- range .Others}}
+      <li><h3>{{.Title}} <span class="conf">({{lower (word .Confidence)}}, {{.Confidence}}%)</span></h3><p>{{.Summary}}</p></li>
+      {{- end}}
+    </ul>
+  </section>
+  {{- end}}
+</main>
+<footer class="wrap">
+  <h2>About this report</h2>
+  <dl>
+    <dt>Report</dt><dd>{{.ID}}</dd>
+    <dt>Boot ID</dt><dd>{{.BootID}}</dd>
+    {{- if .Kernel}}<dt>Kernel</dt><dd>{{.Kernel}}</dd>{{end}}
+    <dt>Evidence used</dt><dd>{{if .Sources.Ring}}BeeBox recording{{end}}{{if .Sources.Journal}}{{if .Sources.Ring}}, {{end}}system journal{{end}}{{if .Sources.Kernel}}, kernel log{{end}}{{if .Sources.Pstore}}, saved kernel crash log{{end}}</dd>
+    <dt>Generated</dt><dd><time datetime="{{iso .GeneratedAt}}">{{longDate .GeneratedAt}}</time> by {{.Generator}}</dd>
+  </dl>
+  {{- range .Notes}}
+  <p>{{.}}</p>
+  {{- end}}
+  <p>This page was made on your computer and loads nothing from the internet. It contains app names and system log lines, but no file contents, command-line arguments or browsing data. Read it through before you share it.</p>
+</footer>
+{{- end}}
+{{- end}}
+<div class="visually-hidden" aria-live="polite" id="live"></div>
+<script>
+(() => {
+  "use strict";
+  const live = document.getElementById("live");
+  const say = (msg) => { live.textContent = ""; requestAnimationFrame(() => { live.textContent = msg; }); };
+
+  document.querySelectorAll("button.copy").forEach((btn) => {
+    if (!navigator.clipboard) return;
+    btn.hidden = false;
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        btn.textContent = "Copied";
+        say("Command copied");
+        setTimeout(() => { btn.textContent = "Copy"; }, 2000);
+      } catch (_) {
+        btn.textContent = "Select it";
+      }
+    });
+  });
+
+  const fmtNum = (v) => (Math.abs(v) < 10 && v % 1 !== 0 ? v.toFixed(1) : Math.round(v).toString());
+  const fmtTime = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  document.querySelectorAll(".plot[data-points]").forEach((plot) => {
+    let pts;
+    try { pts = JSON.parse(plot.dataset.points); } catch (_) { return; }
+    if (!Array.isArray(pts) || pts.length < 2) return;
+    const unit = plot.dataset.unit || "";
+    const ticks = Array.from(plot.querySelectorAll(".yt"));
+    const lo = parseFloat(ticks[0] ? ticks[0].textContent : "0") || 0;
+    const hi = parseFloat(ticks.length ? ticks[ticks.length - 1].textContent : "100") || 100;
+    const loPos = ticks[0] ? parseFloat(ticks[0].style.bottom) : 0;
+    const hiPos = ticks.length ? parseFloat(ticks[ticks.length - 1].style.bottom) : 100;
+    const t0 = pts[0][0], t1 = pts[pts.length - 1][0], span = Math.max(t1 - t0, 1);
+    const cross = plot.querySelector(".crosshair"), dot = plot.querySelector(".hoverdot"), tip = plot.querySelector(".tip");
+    const yPct = (v) => {
+      const f = (v - lo) / ((hi - lo) || 1);
+      return Math.max(0, Math.min(100, loPos + f * (hiPos - loPos)));
+    };
+    let idx = -1;
+    const show = (i, announce) => {
+      idx = Math.max(0, Math.min(pts.length - 1, i));
+      const [t, v] = pts[idx];
+      const x = ((t - t0) / span) * 100;
+      cross.style.left = x + "%";
+      dot.style.left = x + "%";
+      dot.style.bottom = yPct(v) + "%";
+      const val = document.createElement("strong");
+      val.textContent = fmtNum(v) + unit;
+      const when = document.createElement("span");
+      when.textContent = fmtTime(t);
+      tip.replaceChildren(val, when);
+      if (x > 60) { tip.style.left = "auto"; tip.style.right = (100 - x) + "%"; }
+      else { tip.style.right = "auto"; tip.style.left = x + "%"; }
+      cross.hidden = dot.hidden = tip.hidden = false;
+      if (announce) say(fmtTime(t) + ", " + fmtNum(v) + unit);
+    };
+    const hide = () => { cross.hidden = dot.hidden = tip.hidden = true; };
+    const nearest = (clientX) => {
+      const r = plot.getBoundingClientRect();
+      const t = t0 + ((clientX - r.left) / Math.max(r.width, 1)) * span;
+      let a = 0, b = pts.length - 1;
+      while (b - a > 1) { const m = (a + b) >> 1; if (pts[m][0] < t) a = m; else b = m; }
+      return Math.abs(pts[a][0] - t) <= Math.abs(pts[b][0] - t) ? a : b;
+    };
+    plot.addEventListener("pointermove", (e) => show(nearest(e.clientX), false));
+    plot.addEventListener("pointerleave", () => { if (document.activeElement !== plot) hide(); });
+    plot.addEventListener("focus", () => show(idx < 0 ? pts.length - 1 : idx, true));
+    plot.addEventListener("blur", hide);
+    const step = Math.max(1, Math.round(pts.length / 60));
+    plot.addEventListener("keydown", (e) => {
+      const cur = idx < 0 ? pts.length - 1 : idx;
+      const big = e.shiftKey ? step * 10 : step;
+      const moves = { ArrowLeft: cur - big, ArrowRight: cur + big, Home: 0, End: pts.length - 1 };
+      if (e.key in moves) { e.preventDefault(); show(moves[e.key], true); }
+      else if (e.key === "Escape") { hide(); }
+    });
+  });
+})();
+</script>
+</body>
+</html>
+{{- define "logo"}}<svg viewBox="0 0 128 128" aria-hidden="true" focusable="false"><defs><clipPath id="beebox-sm-body"><rect x="-27" y="-17" width="52" height="35" rx="8"/></clipPath></defs><polygon points="64,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36" fill="#1d2125" stroke="#1d2125" stroke-width="10" stroke-linejoin="round"/><polygon points="64,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36" fill="none" stroke="#f5b301" stroke-width="7" stroke-linejoin="round"/><g transform="translate(58 70) rotate(-14)"><ellipse cx="-3" cy="-25" rx="13" ry="19" transform="rotate(-24 -3 -25)" fill="#e6f0fb"/><rect x="-27" y="-17" width="52" height="35" rx="8" fill="#f5b301"/><g clip-path="url(#beebox-sm-body)"><rect x="-28" y="-18" width="54" height="7" fill="#ffd34d"/></g><g clip-path="url(#beebox-sm-body)" fill="#1d2125"><rect x="-13" y="-18" width="9" height="37"/><rect x="4" y="-18" width="9" height="37"/></g><circle cx="35" cy="1" r="11" fill="#1d2125" stroke="#f5b301" stroke-width="5"/></g></svg>{{end}}

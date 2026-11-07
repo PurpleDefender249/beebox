@@ -1,0 +1,15 @@
+post_install() {
+  echo
+  echo "  To start recording now and at every boot:"
+  echo "    sudo systemctl enable --now beebox"
+  echo "  Then run 'beebox doctor' to check nothing is missing."
+  echo
+}
+
+post_upgrade() {
+  systemctl try-restart beebox.service >/dev/null 2>&1 || true
+}
+
+pre_remove() {
+  systemctl disable --now beebox.service >/dev/null 2>&1 || true
+}

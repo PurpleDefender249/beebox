@@ -1,0 +1,180 @@
+.\" Manual page for beebox.
+.TH BEEBOX 1 "November 2026" "beebox @VERSION@" "User Commands"
+.SH NAME
+beebox \- flight recorder that explains why a Linux computer crashed, froze or lost power
+.SH SYNOPSIS
+.B beebox
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B beebox
+keeps a rolling, crash-safe recording of the last minutes of system state:
+memory, memory and disk pressure stalls, swap, CPU, temperatures, battery,
+free disk space, the applications using the most memory and CPU, and the
+kernel's warnings.
+When the computer starts after an unexpected end \(em a crash, a freeze that
+was reset, a power cut, a battery that ran flat or a sleep it never woke
+from \(em
+.B beebox
+combines that recording with the system journal and any kernel crash log and
+writes a report that says, in plain language, what most likely happened and
+what to do about it.
+.PP
+The recorder runs as the
+.B beebox.service
+systemd unit. Everything else is read-only and can be run by any user.
+.SH COMMANDS
+.TP
+.B last
+Show the most recent crash report.
+.TP
+.BI show " \fR[\fIid\fR]"
+Show one report. A unique prefix of the ID is enough.
+.TP
+.B list
+List reports, newest first.
+.TP
+.BI view " \fR[\fIid\fR]"
+Open a report as a web page. The page is self-contained, works offline and
+loads nothing from the internet.
+.B \-\-sample
+shows a sample report.
+.TP
+.B status
+Show whether the recorder is running. Exits with status 3 when it is not.
+.TP
+.B now
+Show the current measurements.
+.B \-\-watch
+keeps updating.
+.TP
+.B doctor
+Check that the system is set up to catch the next crash and print the exact
+command to fix anything that is missing. It changes nothing by itself.
+.TP
+.B analyze
+Analyse a previous boot on demand, from the recording if one exists and from
+the journal. Also works for crashes from before
+.B beebox
+was installed, if the journal kept them. Run with
+.B sudo
+to read the full kernel log.
+.TP
+.B record
+Run the recorder in the foreground (normally started by systemd).
+.TP
+.B notify
+Show a desktop notification for a report the user has not seen. Started at
+login by the XDG autostart entry.
+.B \-\-test
+shows a sample notification.
+.TP
+.BI completion " shell"
+Print a completion script for
+.BR bash ", " zsh " or " fish .
+.TP
+.B version
+Print the version.
+.SH OPTIONS
+.TP
+.B \-\-json
+Machine-readable output (where supported).
+.TP
+.B \-\-verbose
+Show every evidence line and finding.
+.TP
+.BI \-\-html " file"
+Write the report as a web page.
+.TP
+.B \-\-plain
+No colour, sparklines or other graphics. Recommended with screen readers.
+.TP
+.B \-\-no\-color
+No colour.
+.TP
+.BR \-h ", " \-\-help
+Show help for
+.B beebox
+or a command.
+.SH VERDICTS
+Each report names a probable cause with a confidence from 0 to 100,
+described in words as unclear, possibly, likely or very likely.
+Causes include running out of memory, a kernel panic or lockup, a hardware
+(machine-check) error, a graphics driver hang, overheating, an empty battery,
+never waking from sleep, disk errors, a full disk, disk stalls, a sudden
+power loss, and a deliberate SysRq crash. When the evidence does not point
+anywhere,
+.B beebox
+says so rather than guessing.
+.SH FILES
+.TP
+.I /etc/beebox/beebox.conf
+Recorder settings (interval, window, flush, top_processes, keep_reports,
+keep_rings). Optional.
+.TP
+.I /var/lib/beebox/current.ring
+The recording for the current boot.
+.TP
+.I /var/lib/beebox/boots/
+Recordings from earlier boots.
+.TP
+.I /var/lib/beebox/reports/
+Crash reports (JSON).
+.TP
+.I ~/.cache/beebox/
+Web pages written by
+.BR "beebox view" .
+.SH ENVIRONMENT
+.TP
+.B NO_COLOR
+Disable colour (see https://no-color.org).
+.TP
+.B BEEBOX_PLAIN
+Same as
+.BR \-\-plain .
+.TP
+.B BEEBOX_LOG
+Set to
+.B debug
+for verbose recorder logs.
+.TP
+.BR BEEBOX_STATE_DIR ", " BEEBOX_RUNTIME_DIR ", " BEEBOX_CONFIG
+Override file locations (development and testing).
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+An error occurred (or, with
+.BR "doctor \-\-strict" ,
+something needs fixing).
+.TP
+.B 2
+Invalid command or option.
+.TP
+.B 3
+.B status
+found that the recorder is not running.
+.SH PRIVACY
+.B beebox
+records only what any local user can already see in
+.IR /proc :
+process names (never command-line arguments), resource usage and kernel
+messages. It never reads file contents and never uses the network; the
+service runs with networking disabled. Report evidence has home directory
+names, IP addresses and MAC addresses removed.
+.SH EXAMPLES
+.nf
+beebox status
+beebox last
+beebox view
+sudo beebox analyze \-\-boot \-1
+beebox show \-\-json > beebox-report.json
+.fi
+.SH SEE ALSO
+.BR journalctl (1),
+.BR systemd-oomd (8),
+.BR systemd.exec (5)
+.SH BUGS
+Report bugs at https://github.com/PurpleDefender249/beebox/issues.

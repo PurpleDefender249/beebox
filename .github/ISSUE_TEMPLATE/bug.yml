@@ -1,0 +1,30 @@
+name: Bug
+description: Something in BeeBox doesn't work (install, commands, notifications, report pages)
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `beebox ...`
+        2. See error
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: Error messages, `beebox doctor --plain`, and `journalctl -u beebox -b --no-pager | tail -50` if the recorder is involved.
+      render: text
+  - type: input
+    id: system
+    attributes:
+      label: System
+      placeholder: Fedora 41, GNOME 47, beebox 0.1.0
+    validations:
+      required: true

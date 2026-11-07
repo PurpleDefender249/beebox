@@ -1,0 +1,155 @@
+# nfpm config for .deb, .rpm and Arch packages. Built by `make dist`.
+name: beebox
+arch: ${GOARCH}
+platform: linux
+version: ${VERSION}
+version_schema: semver
+section: admin
+priority: optional
+maintainer: "PurpleDefender249 <PurpleDefender249@users.noreply.github.com>"
+description: |
+  Flight recorder that explains why a Linux computer crashed or froze
+  Keeps a crash-safe rolling recording of memory, stalls, temperatures,
+  battery and kernel warnings, and after an unexpected shutdown writes a
+  plain-language report of what most likely happened and what to do.
+vendor: BeeBox
+homepage: https://github.com/PurpleDefender249/beebox
+license: MIT
+
+depends:
+  - systemd
+suggests:
+  - smartmontools
+
+contents:
+  - src: build/linux-${GOARCH}/beebox
+    dst: /usr/bin/beebox
+    file_info: { mode: 0755 }
+  - src: packaging/systemd/beebox.service
+    dst: /usr/lib/systemd/system/beebox.service
+  # Enable-by-default preset for Fedora/openSUSE (Debian enables new
+  # services through deb-systemd-helper; Arch leaves it to the user).
+  - src: packaging/systemd/80-beebox.preset
+    dst: /usr/lib/systemd/system-preset/80-beebox.preset
+    packager: rpm
+  - src: packaging/xdg/beebox-notify.desktop
+    dst: /etc/xdg/autostart/beebox-notify.desktop
+    type: config|noreplace
+  - src: packaging/xdg/beebox.desktop
+    dst: /usr/share/applications/beebox.desktop
+  - src: packaging/icons/hicolor/16x16/apps/beebox.png
+    dst: /usr/share/icons/hicolor/16x16/apps/beebox.png
+  - src: packaging/icons/hicolor/24x24/apps/beebox.png
+    dst: /usr/share/icons/hicolor/24x24/apps/beebox.png
+  - src: packaging/icons/hicolor/32x32/apps/beebox.png
+    dst: /usr/share/icons/hicolor/32x32/apps/beebox.png
+  - src: packaging/icons/hicolor/48x48/apps/beebox.png
+    dst: /usr/share/icons/hicolor/48x48/apps/beebox.png
+  - src: packaging/icons/hicolor/64x64/apps/beebox.png
+    dst: /usr/share/icons/hicolor/64x64/apps/beebox.png
+  - src: packaging/icons/hicolor/128x128/apps/beebox.png
+    dst: /usr/share/icons/hicolor/128x128/apps/beebox.png
+  - src: packaging/icons/hicolor/256x256/apps/beebox.png
+    dst: /usr/share/icons/hicolor/256x256/apps/beebox.png
+  - src: packaging/icons/hicolor/512x512/apps/beebox.png
+    dst: /usr/share/icons/hicolor/512x512/apps/beebox.png
+  - src: packaging/icons/hicolor/scalable/apps/beebox.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/beebox.svg
+  - src: packaging/beebox.conf
+    dst: /etc/beebox/beebox.conf
+    type: config|noreplace
+  # rpm marks the man page and README as documentation (%doc); nfpm skips
+  # "doc" entries for the other formats, so they get plain entries.
+  - src: build/beebox.1.gz
+    dst: /usr/share/man/man1/beebox.1.gz
+    type: doc
+    packager: rpm
+  - src: build/beebox.1.gz
+    dst: /usr/share/man/man1/beebox.1.gz
+    packager: deb
+  - src: build/beebox.1.gz
+    dst: /usr/share/man/man1/beebox.1.gz
+    packager: archlinux
+  - src: build/linux-${GOARCH}/completions/beebox.bash
+    dst: /usr/share/bash-completion/completions/beebox
+  - src: build/linux-${GOARCH}/completions/_beebox
+    dst: /usr/share/zsh/site-functions/_beebox
+  - src: build/linux-${GOARCH}/completions/beebox.fish
+    dst: /usr/share/fish/vendor_completions.d/beebox.fish
+  - src: README.md
+    dst: /usr/share/doc/beebox/README.md
+    type: doc
+    packager: rpm
+  - src: README.md
+    dst: /usr/share/doc/beebox/README.md
+    packager: deb
+  - src: README.md
+    dst: /usr/share/doc/beebox/README.md
+    packager: archlinux
+  # Licence: Debian wants a copyright file, Fedora and Arch a licence file.
+  - src: packaging/deb/copyright
+    dst: /usr/share/doc/beebox/copyright
+    packager: deb
+  - src: build/changelog.Debian.gz
+    dst: /usr/share/doc/beebox/changelog.gz
+    packager: deb
+  - src: packaging/deb/lintian-overrides
+    dst: /usr/share/lintian/overrides/beebox
+    packager: deb
+  - src: LICENSE
+    dst: /usr/share/licenses/beebox/LICENSE
+    type: license
+    packager: rpm
+  - src: LICENSE
+    dst: /usr/share/licenses/beebox/LICENSE
+    packager: archlinux
+  - dst: /var/lib/beebox
+    type: dir
+    file_info: { mode: 0755 }
+    packager: deb
+  - dst: /var/lib/beebox
+    type: dir
+    file_info: { mode: 0755 }
+    packager: rpm
+
+overrides:
+  deb:
+    recommends:
+      - libnotify-bin
+    scripts:
+      postinstall: packaging/scripts/deb-postinst.sh
+      preremove: packaging/scripts/deb-prerm.sh
+      postremove: packaging/scripts/deb-postrm.sh
+  rpm:
+    depends:
+      - systemd
+      - hicolor-icon-theme
+    recommends:
+      - libnotify
+    scripts:
+      postinstall: packaging/scripts/rpm-post.sh
+      preremove: packaging/scripts/rpm-preun.sh
+      postremove: packaging/scripts/rpm-postun.sh
+  archlinux:
+    depends:
+      - systemd
+      - hicolor-icon-theme
+    recommends:
+      - libnotify
+    suggests:
+      - smartmontools
+    scripts:
+      postinstall: packaging/scripts/arch-postinstall.sh
+      preremove: packaging/scripts/arch-preremove.sh
+      postremove: packaging/scripts/arch-postremove.sh
+
+deb:
+  fields:
+    Bugs: https://github.com/PurpleDefender249/beebox/issues
+
+rpm:
+  summary: Explains why a Linux computer crashed, froze or lost power
+archlinux:
+  packager: "PurpleDefender249 <PurpleDefender249@users.noreply.github.com>"
+  scripts:
+    postupgrade: packaging/scripts/arch-postupgrade.sh

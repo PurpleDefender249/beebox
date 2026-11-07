@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=BeeBox crash notifier
+Comment=Tells you why your computer crashed, froze or lost power
+Exec=beebox notify
+Icon=beebox
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=8
+X-KDE-autostart-after=panel

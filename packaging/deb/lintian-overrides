@@ -1,0 +1,3 @@
+# Go links position-independent executables without libc, so the binary is
+# ET_DYN with no DT_NEEDED entries. It is a program, not a shared library.
+beebox: shared-library-lacks-prerequisites [usr/bin/beebox]

@@ -1,0 +1,3 @@
+# BeeBox records the last minutes before a crash, so it is only useful when
+# it runs from boot. Override with a file in /etc/systemd/system-preset/.
+enable beebox.service

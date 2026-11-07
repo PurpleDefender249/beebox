@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>BeeBox</title>
+  <desc>Simplified BeeBox logo for sizes of 32 pixels and below.</desc>
+  <defs>
+    <clipPath id="beebox-sm-body"><rect x="-27" y="-17" width="52" height="35" rx="8"/></clipPath>
+  </defs>
+  <polygon points="64,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36" fill="#1d2125" stroke="#1d2125" stroke-width="10" stroke-linejoin="round"/>
+  <polygon points="64,8 112.5,36 112.5,92 64,120 15.5,92 15.5,36" fill="none" stroke="#f5b301" stroke-width="7" stroke-linejoin="round"/>
+  <g transform="translate(58 70) rotate(-14)">
+    <ellipse cx="-3" cy="-25" rx="13" ry="19" transform="rotate(-24 -3 -25)" fill="#e6f0fb"/>
+    <rect x="-27" y="-17" width="52" height="35" rx="8" fill="#f5b301"/>
+    <g clip-path="url(#beebox-sm-body)">
+      <rect x="-28" y="-18" width="54" height="7" fill="#ffd34d"/>
+    </g>
+    <g clip-path="url(#beebox-sm-body)" fill="#1d2125">
+      <rect x="-13" y="-18" width="9" height="37"/>
+      <rect x="4" y="-18" width="9" height="37"/>
+    </g>
+    <circle cx="35" cy="1" r="11" fill="#1d2125" stroke="#f5b301" stroke-width="5"/>
+  </g>
+</svg>

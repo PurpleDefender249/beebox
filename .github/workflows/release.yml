@@ -1,0 +1,147 @@
+name: Release
+
+# Push a tag like v0.2.0 to publish a release. This workflow:
+#   1. checks that CHANGELOG.md has a section for the version,
+#   2. builds and tests the packages (signing the .rpm files and the
+#      checksum list when the BEEBOX_SIGNING_KEY secret is set),
+#   3. creates the GitHub release with build provenance attestations,
+#   4. publishes the signed APT/DNF repository and the one-line installer
+#      to GitHub Pages (the gh-pages branch). Pre-releases (tags with a "-",
+#      like v0.2.0-rc1) are not published to the repository.
+# docs/MAINTAINING.md explains the one-time setup.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and publish the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the GitHub release
+      id-token: write      # sign build provenance
+      attestations: write  # store build provenance
+    outputs:
+      signed: ${{ steps.key.outputs.signed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: CHANGELOG.md has a section for this version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$version]' section. Add one, commit, and tag again."
+            exit 1
+          fi
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.48.0
+
+      - name: Import the signing key
+        id: key
+        env:
+          SIGNING_KEY: ${{ secrets.BEEBOX_SIGNING_KEY }}
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The BEEBOX_SIGNING_KEY secret is not set, so packages are unsigned and the APT/DNF repository is not published. See docs/MAINTAINING.md."
+            exit 0
+          fi
+          umask 077
+          printf '%s\n' "$SIGNING_KEY" > "$RUNNER_TEMP/signing.asc"
+          gpg --batch --import "$RUNNER_TEMP/signing.asc"
+          fpr=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')
+          echo "fpr=$fpr" >> "$GITHUB_OUTPUT"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build release artefacts
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [ -f "$RUNNER_TEMP/signing.asc" ]; then
+            make dist VERSION="$version" SIGNING_KEY="$RUNNER_TEMP/signing.asc"
+            gpg --batch --yes --armor --detach-sign -u "${{ steps.key.outputs.fpr }}" \
+              -o build/dist/SHA256SUMS.asc build/dist/SHA256SUMS
+          else
+            make dist VERSION="$version"
+          fi
+
+      - name: Remove the key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/signing.asc"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: build/dist/*
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          scripts/release-notes.sh "$version" > notes.md
+          pre=""
+          case "$version" in *-*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" build/dist/* $pre \
+            --title "BeeBox $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
+  pages:
+    name: Publish the package repository
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.signed == 'true' && !contains(github.ref_name, '-')
+    permissions:
+      contents: write  # push the gh-pages branch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install repository tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils createrepo-c
+
+      - name: Import the signing key
+        id: key
+        env:
+          SIGNING_KEY: ${{ secrets.BEEBOX_SIGNING_KEY }}
+        run: |
+          printf '%s\n' "$SIGNING_KEY" | gpg --batch --import
+          fpr=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')
+          echo "fpr=$fpr" >> "$GITHUB_OUTPUT"
+
+      - name: Build the repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" -D pkgs -p '*.deb' -p '*.rpm'
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          scripts/build-repo.sh pkgs site "${{ steps.key.outputs.fpr }}" "${GITHUB_REF_NAME#v}" "https://$owner.github.io/$repo"
+
+      - name: Push to the gh-pages branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Publish BeeBox ${GITHUB_REF_NAME} packages"
+          # One commit, replaced on every release, so the branch never grows.
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+          echo "Published to https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_STEP_SUMMARY"
