@@ -112,7 +112,8 @@ confirm() {
 install_apt() {
     step "Adding the BeeBox APT repository"
     tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
-    fetch "$REPO_URL/beebox.gpg" "$tmp/beebox.gpg"
+    fetch "$REPO_URL/beebox.gpg" "$tmp/beebox.gpg" \
+        || die "couldn't download the signing key from $REPO_URL/beebox.gpg (is the address right? see https://github.com/PurpleDefender249/beebox#install)"
     run install -d -m 0755 /etc/apt/keyrings
     run install -m 0644 "$tmp/beebox.gpg" "$KEYRING"
     printf 'Types: deb\nURIs: %s/apt\nSuites: stable\nComponents: main\nArchitectures: %s\nSigned-By: %s\n' \
@@ -140,7 +141,8 @@ install_pacman() {
     tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
     version=${BEEBOX_VERSION:-}
     if [ -z "$version" ]; then
-        fetch "$REPO_URL/latest" "$tmp/latest"
+        fetch "$REPO_URL/latest" "$tmp/latest" \
+            || die "couldn't read the latest version from $REPO_URL/latest (is the address right?)"
         version=$(tr -dc '0-9A-Za-z.+~-' <"$tmp/latest")
     fi
     [ -n "$version" ] || die "couldn't find the latest version"

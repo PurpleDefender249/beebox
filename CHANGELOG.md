@@ -4,6 +4,22 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-11-08
+
+### Fixed
+
+- Kali Linux (and any system whose default policy disables newly installed
+  services): installing the package now enables and starts the recorder,
+  through a preset file shipped in the package. On 0.1.0, run
+  `sudo systemctl enable --now beebox` once.
+- The published one-line installer always points at the address it is
+  served from, and says clearly which download failed if one does.
+
+### Added
+
+- The release workflow can republish the package repository for an existing
+  release: `gh workflow run release.yml -f tag=v0.1.1`.
+
 ## [0.1.0] - 2026-11-07
 
 First release.
@@ -35,12 +51,12 @@ First release.
   direct downloads.
 - Packages for Debian, Ubuntu, Kali, Mint, Fedora and Arch (x86_64 and
   ARM64), built as position-independent executables with full RELRO, with
-  distribution-correct service handling (debhelper-style plus an enable
-  preset on Debian and Kali, whose default policy disables new services; presets
+  distribution-correct service handling (debhelper-style on Debian, presets
   on Fedora, opt-in on Arch); man page; bash, zsh and fish completions.
 - `beebox doctor` explains how to enable kernel crash logs (UEFI pstore),
   and a hidden `beebox dump` command prints raw recordings for bug reports.
 - The BeeBox logo: a bee with a striped recorder-box body in a honeycomb
   cell, with a simplified version for 16–32 px and PNGs for icon themes.
 
+[0.1.1]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.1
 [0.1.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.0

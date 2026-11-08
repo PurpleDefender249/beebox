@@ -69,7 +69,11 @@ gpg --batch --export "$key" >"$out/beebox.gpg"
 fingerprint=$(gpg --batch --with-colons --fingerprint "$key" | awk -F: '/^fpr:/ {print $10; exit}')
 printf 'Types: deb\nURIs: %s/apt\nSuites: stable\nComponents: main\nSigned-By: /etc/apt/keyrings/beebox.gpg\n' "$base" >"$out/beebox.sources"
 printf '[beebox]\nname=BeeBox\nbaseurl=%s/rpm\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=%s/beebox.asc\n' "$base" "$base" >"$out/beebox.repo"
-cp "$here/install.sh" "$out/install.sh"
+# The published installer points at the address it is served from, so it
+# works whatever the repository is called (GitHub Pages paths are
+# case-sensitive: /BeeBox/ and /beebox/ are different sites).
+sed "s|^REPO_URL=\${BEEBOX_REPO_URL:-[^}]*}|REPO_URL=\${BEEBOX_REPO_URL:-$base}|" "$here/install.sh" >"$out/install.sh"
+grep -q "^REPO_URL=\${BEEBOX_REPO_URL:-$base}\$" "$out/install.sh" || { echo "could not set the installer's address" >&2; exit 1; }
 printf '%s\n' "$version" >"$out/latest"
 touch "$out/.nojekyll"
 

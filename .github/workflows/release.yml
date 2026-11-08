@@ -8,11 +8,19 @@ name: Release
 #   4. publishes the signed APT/DNF repository and the one-line installer
 #      to GitHub Pages (the gh-pages branch). Pre-releases (tags with a "-",
 #      like v0.2.0-rc1) are not published to the repository.
-# docs/MAINTAINING.md explains the one-time setup.
+# It can also be run by hand (Actions -> Release -> Run workflow, or
+# `gh workflow run release.yml -f tag=v0.1.0`) to republish the package
+# repository for an existing release, for example after renaming the
+# repository. docs/MAINTAINING.md explains the one-time setup.
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to republish to the package repository (for example v0.1.0)"
+        required: true
 
 permissions:
   contents: read
@@ -20,6 +28,7 @@ permissions:
 jobs:
   release:
     name: Build and publish the release
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write      # create the GitHub release
@@ -103,9 +112,17 @@ jobs:
     name: Publish the package repository
     runs-on: ubuntu-latest
     needs: release
-    if: needs.release.outputs.signed == 'true' && !contains(github.ref_name, '-')
+    # After a tag push: only when the release was signed and isn't a
+    # pre-release. When run by hand: always (the release already exists).
+    if: >-
+      always() && (
+        (github.event_name == 'push' && needs.release.result == 'success' &&
+         needs.release.outputs.signed == 'true' && !contains(github.ref_name, '-')) ||
+        github.event_name == 'workflow_dispatch')
     permissions:
       contents: write  # push the gh-pages branch
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -114,11 +131,19 @@ jobs:
       - name: Install repository tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils createrepo-c
 
-      - name: Import the signing key
+      - name: Check the tag and import the signing key
         id: key
         env:
           SIGNING_KEY: ${{ secrets.BEEBOX_SIGNING_KEY }}
         run: |
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::'$TAG' is not a release tag like v0.1.0"; exit 1 ;;
+          esac
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::error::The BEEBOX_SIGNING_KEY secret is not set. See docs/MAINTAINING.md."
+            exit 1
+          fi
           printf '%s\n' "$SIGNING_KEY" | gpg --batch --import
           fpr=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')
           echo "fpr=$fpr" >> "$GITHUB_OUTPUT"
@@ -127,10 +152,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "$GITHUB_REF_NAME" -D pkgs -p '*.deb' -p '*.rpm'
+          gh release download "$TAG" -D pkgs -p '*.deb' -p '*.rpm'
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           repo="${GITHUB_REPOSITORY#*/}"
-          scripts/build-repo.sh pkgs site "${{ steps.key.outputs.fpr }}" "${GITHUB_REF_NAME#v}" "https://$owner.github.io/$repo"
+          scripts/build-repo.sh pkgs site "${{ steps.key.outputs.fpr }}" "${TAG#v}" "https://$owner.github.io/$repo"
 
       - name: Push to the gh-pages branch
         env:
@@ -141,7 +166,7 @@ jobs:
           git add -A
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -q -m "Publish BeeBox ${GITHUB_REF_NAME} packages"
+              commit -q -m "Publish BeeBox ${TAG} packages"
           # One commit, replaced on every release, so the branch never grows.
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
           echo "Published to https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_STEP_SUMMARY"

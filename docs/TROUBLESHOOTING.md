@@ -23,6 +23,7 @@ check it worked and a way to undo it.
 | `apt update`: `NO_PUBKEY`, `not signed`, `Release file … is not valid yet` | Repository key or clock problem | [6](#6-repository-errors) |
 | `dnf`: `GPG check FAILED` / `repomd.xml GPG signature verification error` | Repository key problem | [6](#6-repository-errors) |
 | Install says "unpacking … over (0.1.0)" and the service is gone | An early test build was upgraded in place | [7](#7-reinstalling-cleanly) |
+| One-line installer: `curl: (22) … 404` | The package site isn't published at that address yet | [8](#8-the-one-line-installer-says-404) |
 
 ## 1. The service isn't running
 
@@ -167,6 +168,24 @@ sudo apt install beebox      # or: sudo apt install ./beebox_*_amd64.deb
 
 Fedora: `sudo dnf remove beebox && sudo rm -rf /var/lib/beebox && sudo dnf install beebox`.
 Arch: `sudo pacman -R beebox && sudo rm -rf /var/lib/beebox && sudo pacman -U ./beebox-*.pkg.tar.zst`.
+
+## 8. The one-line installer says 404
+
+The installer and the package repository are served by GitHub Pages from the
+`gh-pages` branch, which the release workflow creates. A 404 means one of:
+
+- No release has been published yet, or Pages isn't switched on
+  (repository **Settings → Pages → Deploy from a branch → gh-pages → / (root)**).
+- The address doesn't match the repository name exactly. Pages addresses are
+  case-sensitive: a repository named `BeeBox` lives at `…github.io/BeeBox/`.
+  Rename it to `beebox` (**Settings → General → Repository name**), then
+  republish: `gh workflow run release.yml -f tag=v0.1.1`.
+
+Check which address answers:
+
+```sh
+curl -sI https://purpledefender249.github.io/beebox/latest | head -1
+```
 
 ## Collecting information for a bug report
 

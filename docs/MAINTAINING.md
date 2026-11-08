@@ -120,6 +120,18 @@ says what failed.
 <https://purpledefender249.github.io/beebox/> shows the install page and the
 one-line installer works.
 
+Keep the repository name **lowercase** (`beebox`). GitHub Pages addresses
+are case-sensitive, so a repository called `BeeBox` is served at
+`/BeeBox/`, not at the `/beebox/` address the README and installer use.
+
+To republish the package repository for an existing release (after renaming
+the repository, or if the Pages branch was lost), run:
+
+```sh
+gh workflow run release.yml -f tag=v0.1.0
+gh run watch          # pick the run; it takes about a minute
+```
+
 Pre-releases: tag `v0.2.0-rc1`. They appear on the releases page marked as
 pre-release and are not pushed to the package repository.
 

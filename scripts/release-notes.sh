@@ -3,7 +3,9 @@
 # Usage: scripts/release-notes.sh 0.1.0
 set -eu
 version="$1"
-site="https://purpledefender249.github.io/beebox"
+repo=${GITHUB_REPOSITORY:-PurpleDefender249/beebox}
+owner=$(printf '%s' "${repo%%/*}" | tr '[:upper:]' '[:lower:]')
+site="https://$owner.github.io/${repo#*/}"
 
 awk -v v="$version" '
   /^## \[/ { if (found) exit; if (index($0, "[" v "]")) { found = 1; next } }
@@ -36,5 +38,5 @@ ARM64 packages are included too. Then run \`beebox doctor\`.
 Verify a download: \`sha256sum -c SHA256SUMS --ignore-missing\`, check the
 checksum list's signature with \`gpg --verify SHA256SUMS.asc SHA256SUMS\`
 (key: $site/beebox.asc), or check the build provenance with
-\`gh attestation verify <file> --repo \${GITHUB_REPOSITORY:-PurpleDefender249/beebox}\`.
+\`gh attestation verify <file> --repo $repo\`.
 EOF
