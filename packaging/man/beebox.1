@@ -142,6 +142,12 @@ Crash reports (JSON).
 .I ~/.cache/beebox/
 Web pages written by
 .BR "beebox view" .
+.TP
+.IR /sys/fs/pstore/ ", " /var/lib/systemd/pstore/ ", " /var/crash/
+Kernel crash logs saved by pstore or kdump, read after a crash. Set them up
+with the command
+.B beebox doctor
+shows.
 .SH ENVIRONMENT
 .TP
 .B NO_COLOR

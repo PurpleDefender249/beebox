@@ -121,8 +121,17 @@ the same unless the kernel can save a crash log:
 beebox doctor          # see the "Kernel crash logs" line and its fix
 ```
 
-Legacy-BIOS computers and virtual machines can't save crash logs; UEFI ones
-usually can after the one command `beebox doctor` shows.
+UEFI computers usually can after the one command `beebox doctor` shows. Computers
+and virtual machines that start in legacy BIOS mode have no firmware storage for
+crash logs, but kdump works there instead: `beebox doctor` shows the command for
+Debian, Ubuntu, Kali, Mint and Fedora. It reserves about 200 MB of memory for a
+spare kernel that saves the crashed kernel's log to `/var/crash` and restarts the
+computer. Restart once after running it, then check the doctor's line says
+**Saved if the kernel crashes (kdump, in /var/crash)**.
+
+Each kernel crash also leaves a memory dump next to the log in `/var/crash`, often
+a few hundred MB. BeeBox only reads the small `dmesg` file; delete old crash
+folders when you no longer need them (`sudo ls /var/crash`).
 
 To see exactly what was recorded in the final two minutes:
 
@@ -180,7 +189,7 @@ The installer and the package repository are served by GitHub Pages from the
 - The address doesn't match the repository name exactly. Pages addresses are
   case-sensitive: a repository named `BeeBox` lives at `…github.io/BeeBox/`.
   Rename it to `beebox` (**Settings → General → Repository name**), then
-  republish: `gh workflow run release.yml -f tag=v0.2.0` (the latest tag).
+  republish: `gh workflow run release.yml -f tag=v0.3.0` (the latest tag).
 
 Check which address answers:
 

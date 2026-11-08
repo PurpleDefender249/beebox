@@ -8,11 +8,12 @@ virt-manager, Hyper-V).
 ## 1. Set up the VM
 
 1. Create a VM with 2 CPUs, **4 GB of RAM** and a 25 GB disk.
-   **Choose UEFI firmware when you create it** if you want to test kernel
-   crashes (section 4). In VMware Workstation this is
-   *VM Settings → Options → Advanced → Firmware type → UEFI*; in VirtualBox
-   it is *Settings → System → Enable EFI*. Changing this on a VM that is
-   already installed usually stops it booting, so decide before installing.
+   To test kernel crashes (section 4) the kernel must be able to save a
+   crash log. **UEFI firmware** does that with no setup: in VMware
+   Workstation choose *VM Settings → Options → Advanced → Firmware type →
+   UEFI*, in VirtualBox *Settings → System → Enable EFI*, before installing
+   (changing it later usually stops the VM booting). A VM that already uses
+   **legacy BIOS** can use kdump instead; section 4 shows how.
 2. Install the distribution, log in, open a terminal and copy the package
    into the VM (shared folder, drag and drop, or download it from the
    releases page).
@@ -90,10 +91,25 @@ tells us whether it kept up during the memory storm.
 
 A kernel crash stops the computer instantly: nothing can be written to disk
 afterwards, not by BeeBox, not by the system journal. The only record that
-survives is the kernel's own crash log, which it saves in UEFI firmware
-storage (pstore). So this test only works when `beebox doctor` shows
-**Kernel crash logs: Saved if the kernel crashes**. If it says *legacy BIOS*,
-skip this test — BeeBox will report a sudden stop, which is the honest
+survives is the kernel's own crash log, saved either in UEFI firmware storage
+(pstore) or by kdump, a spare kernel that takes over, saves the log to
+`/var/crash` and restarts the computer. So this test needs `beebox doctor` to
+show **Kernel crash logs: Saved if the kernel crashes**.
+
+On a **legacy BIOS** VM, set up kdump first: run the command `beebox doctor`
+shows on the *Kernel crash logs* line (on Debian, Ubuntu and Kali it installs
+`kdump-tools`, switches it on and adds a memory reservation to the boot
+menu), restart, then check:
+
+```sh
+beebox doctor               # Kernel crash logs: Saved if the kernel crashes (kdump, in /var/crash)
+sudo kdump-config show      # Debian family: "current state: ready to kdump"
+```
+
+If `kdump-config show` says the reservation is too small, raise the number at
+the end of `crashkernel=` in `/etc/default/grub.d/kdump-tools.cfg` (for
+example to 256M), run `sudo update-grub` and restart. Without a working crash
+log, skip this test: BeeBox will report a sudden stop, which is the honest
 answer.
 
 ```sh
@@ -101,8 +117,11 @@ echo 1 | sudo tee /proc/sys/kernel/sysrq
 echo c | sudo tee /proc/sysrq-trigger
 ```
 
-The VM freezes or reboots. If it freezes, cut the power as in section 2, then
-start it. Expected verdict: **A crash was triggered on purpose (SysRq + C)**.
+With kdump, the screen fills with kernel messages for a minute while the
+spare kernel saves the log, then the VM restarts by itself: don't power it
+off during that. With UEFI crash logs the VM restarts or freezes; if it
+freezes, cut the power as in section 2, then start it. Expected verdict:
+**A crash was triggered on purpose (SysRq + C)**.
 
 ## 5. Check the details
 

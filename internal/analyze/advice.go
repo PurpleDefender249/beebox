@@ -17,7 +17,7 @@ func DetectEnv(procDir string) Env {
 	return Env{
 		PkgManager:   detectPkgManager("/etc/os-release"),
 		OOMProtector: detectOOMProtector(procDir),
-		CrashLogs:    pstore.Backend() != "",
+		CrashLogs:    pstore.Available(),
 		HasOOMD:      unitInstalled("systemd-oomd.service"),
 	}
 }

@@ -48,22 +48,40 @@ type metrics struct {
 	growthWindow time.Duration
 }
 
-// busyStretch measures the unbroken run of samples at the end of the
-// recording in which the processor was at least 95% busy. The clean-stop
-// sample is ignored (it is taken while the recorder shuts down).
+// Busy-processor thresholds: a sample counts as busy at 90% or more, and
+// a stretch only ends after several quiet seconds in a row, so one sample
+// at 89% (a context switch storm, the recorder's own wake-up) doesn't hide
+// minutes of a processor running flat out.
+const (
+	busyCPU      = 90
+	busyMaxQuiet = 5
+)
+
+// busyStretch measures the stretch at the end of the recording in which
+// the processor was busy, allowing brief dips, and names the app that used
+// the most processor time in it. The clean-stop sample is ignored (it is
+// taken while the recorder shuts down).
 func busyStretch(ss []sample.Sample) (time.Duration, sample.App) {
 	end := len(ss) - 1
 	if end >= 0 && ss[end].Flags&sample.FlagStop != 0 {
 		end--
 	}
-	if end < 0 || ss[end].CPU < 95 {
+	if end < 0 || ss[end].CPU < busyCPU {
 		return 0, sample.App{}
 	}
-	start := end
+	start, busy, quiet := end, 0, 0
 	cpuBy := map[string]float64{}
 	names := map[string]sample.App{}
-	for i := end; i >= 0 && ss[i].CPU >= 95; i-- {
+	for i := end; i >= 0; i-- {
+		if ss[i].CPU < busyCPU {
+			if quiet++; quiet >= busyMaxQuiet {
+				break
+			}
+			continue
+		}
+		quiet = 0
 		start = i
+		busy++
 		for _, a := range ss[i].TopCPU {
 			cpuBy[a.Name] += a.CPU
 			if _, ok := names[a.Name]; !ok {
@@ -78,8 +96,8 @@ func busyStretch(ss []sample.Sample) (time.Duration, sample.App) {
 			best, top = total, names[name]
 		}
 	}
-	if n := float64(end - start + 1); n > 0 && top.Name != "" {
-		top.CPU = round1(best / n)
+	if busy > 0 && top.Name != "" {
+		top.CPU = round1(best / float64(busy))
 	}
 	return time.Duration(ss[end].T-ss[start].T) * time.Millisecond, top
 }

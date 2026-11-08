@@ -96,7 +96,7 @@ func Run(p paths.Paths) []Check {
 	cs = append(cs, checkPstore())
 	cs = append(cs, checkNotify())
 	cs = append(cs, checkSpace(p))
-	cs = append(cs, checkSensors(rec))
+	cs = append(cs, checkSensors(rec, virtualMachine("/proc/cpuinfo", "/sys/class/dmi/id"), analyze.DetectEnv("").PkgManager))
 	return cs
 }
 
@@ -220,12 +220,33 @@ func checkSysrq() Check {
 	return c
 }
 
-func checkPstore() Check { return pstoreCheck("/sys", exec.LookPath) }
+func checkPstore() Check {
+	return pstoreCheck("/sys", lookPathSbin, analyze.DetectEnv("").PkgManager)
+}
 
-// pstoreCheck reports whether a kernel crash can leave a log that survives
-// the reboot. sys is the sysfs root and lookPath finds programs; both are
-// parameters for tests. Fix is always a command (it is printed as one).
-func pstoreCheck(sys string, lookPath func(string) (string, error)) Check {
+// lookPathSbin finds administrator commands (update-grub, kdump-config)
+// even when the doctor runs as a normal user, whose PATH on Debian has no
+// /usr/sbin.
+func lookPathSbin(name string) (string, error) {
+	if p, err := exec.LookPath(name); err == nil {
+		return p, nil
+	}
+	for _, dir := range []string{"/usr/sbin", "/sbin", "/usr/local/sbin"} {
+		p := filepath.Join(dir, name)
+		if fi, err := os.Stat(p); err == nil && fi.Mode().IsRegular() && fi.Mode()&0o111 != 0 {
+			return p, nil
+		}
+	}
+	return "", exec.ErrNotFound
+}
+
+// useKdump switches kdump-tools on (Debian ships it switched off).
+const useKdump = "sudo sed -i 's/^USE_KDUMP=.*/USE_KDUMP=1/' /etc/default/kdump-tools"
+
+// pstoreCheck reports whether a kernel crash leaves a log BeeBox can read:
+// pstore (UEFI variables, ramoops, ERST) or kdump, which also works on
+// computers that start in legacy BIOS mode.
+func pstoreCheck(sys string, lookPath func(string) (string, error), pm string) Check {
 	c := Check{ID: "pstore", Name: "Kernel crash logs"}
 	read := func(rel string) string {
 		b, err := os.ReadFile(filepath.Join(sys, rel)) // #nosec G304 -- fixed sysfs paths
@@ -234,9 +255,15 @@ func pstoreCheck(sys string, lookPath func(string) (string, error)) Check {
 		}
 		return strings.TrimSpace(string(b))
 	}
+	has := func(name string) bool { _, err := lookPath(name); return err == nil }
 	if b := read("module/pstore/parameters/backend"); b != "" && b != "(null)" {
 		c.Status = OK
 		c.Result = "Saved if the kernel crashes (backend: " + b + ")"
+		return c
+	}
+	if read("kernel/kexec_crash_loaded") == "1" {
+		c.Status = OK
+		c.Result = "Saved if the kernel crashes (kdump, in /var/crash)"
 		return c
 	}
 	c.Status = Info
@@ -244,14 +271,43 @@ func pstoreCheck(sys string, lookPath func(string) (string, error)) Check {
 	uefi := fileExists(filepath.Join(sys, "firmware/efi"))
 	switch {
 	case !uefi:
-		c.Result = "Not available: this computer starts in legacy BIOS mode"
-		c.Why += " Crash logs need UEFI firmware. Switching an existing install from BIOS to UEFI usually stops it booting, so only choose UEFI for a new install or a new virtual machine."
+		c.Why += " Legacy BIOS has no firmware storage for crash logs, but kdump works: it keeps about 200 MB of memory for a spare kernel that saves the crashed kernel's log to /var/crash, then restarts."
+		reserved := read("kernel/kexec_crash_size")
+		installed := has("kdump-config") || has("kdumpctl")
+		switch {
+		case installed && reserved != "" && reserved != "0":
+			c.Result = "kdump is set up but not switched on"
+			switch {
+			case has("kdump-config"):
+				c.Fix = useKdump + " && sudo kdump-config load"
+			case has("kdumpctl"):
+				c.Fix = "sudo systemctl enable --now kdump"
+			}
+		case installed:
+			c.Result = "kdump is installed but has no memory reserved yet"
+			switch {
+			case has("kdump-config"):
+				c.Fix = useKdump + " && sudo update-grub   # then restart"
+			case has("kdumpctl"):
+				c.Fix = "sudo kdumpctl reset-crashkernel --kernel=ALL && sudo systemctl enable kdump   # then restart"
+			}
+		default:
+			c.Result = "Not set up: this computer starts in legacy BIOS mode, so it needs kdump"
+			switch pm {
+			case "apt":
+				c.Fix = "sudo env DEBIAN_FRONTEND=noninteractive apt install -y kdump-tools && " + useKdump + " && sudo update-grub   # then restart"
+			case "dnf":
+				c.Fix = "sudo dnf install -y kexec-tools && sudo kdumpctl reset-crashkernel --kernel=ALL && sudo systemctl enable kdump   # then restart"
+			default:
+				c.Why += " Your distribution's kdump guide explains how to set it up. A new install or a new virtual machine can use UEFI instead."
+			}
+		}
 	case read("module/efi_pstore/parameters/pstore_disable") == "Y":
 		c.Result = "Not saved: the kernel's UEFI crash log store is switched off"
 		const arg = "efi_pstore.pstore_disable=0"
-		if _, err := lookPath("grubby"); err == nil {
+		if has("grubby") {
 			c.Fix = "sudo grubby --update-kernel=ALL --args=" + arg + "   # then restart"
-		} else if _, err := lookPath("update-grub"); err == nil {
+		} else if has("update-grub") {
 			c.Fix = `sudo sed -i 's/^GRUB_CMDLINE_LINUX="/&` + arg + ` /' /etc/default/grub && sudo update-grub   # then restart`
 		} else {
 			c.Why += " To turn it on, add " + arg + " to the kernel command line and restart."
@@ -309,7 +365,7 @@ func checkSpace(p paths.Paths) Check {
 	return c
 }
 
-func checkSensors(r Recording) Check {
+func checkSensors(r Recording, vm bool, pm string) Check {
 	c := Check{ID: "sensors", Name: "Temperature sensors", Status: Info}
 	if r.Last != nil && len(r.Last.Temps) > 0 {
 		var names []string
@@ -320,8 +376,49 @@ func checkSensors(r Recording) Check {
 		c.Result = "Found: " + strings.Join(names, ", ")
 		return c
 	}
-	c.Result = "None found (normal in virtual machines)"
+	if vm {
+		c.Result = "None: virtual machines have no temperature sensors"
+		c.Why = "The host computer's sensors aren't passed to the virtual machine, so there is nothing to turn on here. Overheating is still caught on real hardware."
+		return c
+	}
+	c.Result = "None found"
+	c.Why = "Without sensors, BeeBox can't tell when overheating stopped the computer. Most computers have them, but some need a driver that lm-sensors finds and loads."
+	switch pm {
+	case "apt":
+		c.Fix = "sudo apt install -y lm-sensors && sudo sensors-detect --auto   # then restart"
+	case "dnf":
+		c.Fix = "sudo dnf install -y lm_sensors && sudo sensors-detect --auto   # then restart"
+	case "pacman":
+		c.Fix = "sudo pacman -S --needed lm_sensors && sudo sensors-detect --auto   # then restart"
+	case "zypper":
+		c.Fix = "sudo zypper install sensors && sudo sensors-detect --auto   # then restart"
+	}
 	return c
+}
+
+// virtualMachine reports whether this is a virtual machine: x86 CPUs show
+// a "hypervisor" flag, and the firmware names the virtual hardware.
+func virtualMachine(cpuinfo, dmi string) bool {
+	if b, err := os.ReadFile(cpuinfo); err == nil { // #nosec G304 -- fixed /proc path
+		for _, line := range strings.Split(string(b), "\n") {
+			if strings.HasPrefix(line, "flags") && strings.Contains(line+" ", " hypervisor ") {
+				return true
+			}
+		}
+	}
+	for _, f := range []string{"sys_vendor", "product_name", "board_vendor"} {
+		b, err := os.ReadFile(filepath.Join(dmi, f)) // #nosec G304 -- fixed sysfs paths
+		if err != nil {
+			continue
+		}
+		v := strings.ToLower(string(b))
+		for _, k := range []string{"vmware", "virtualbox", "innotek", "qemu", "kvm", "xen", "parallels", "bochs", "virtual machine", "hyper-v", "cloud hypervisor"} {
+			if strings.Contains(v, k) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func fileExists(p string) bool {

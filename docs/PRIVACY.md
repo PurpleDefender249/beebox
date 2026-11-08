@@ -32,7 +32,8 @@ local users (mode 0644).
 ## What reports contain
 
 A report adds the verdict, the advice and the evidence lines it relied on,
-which can include lines from the system journal and kernel log. Before saving,
+which can include lines from the system journal and kernel log, including the
+crashed kernel's own log when pstore or kdump saved one. Before saving,
 BeeBox replaces:
 
 - `/home/<name>` with `/home/<user>`;

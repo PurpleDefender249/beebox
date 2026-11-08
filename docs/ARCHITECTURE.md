@@ -9,7 +9,7 @@ internal/sample     reads /proc, /sys and /dev/kmsg into a Sample
 internal/ring       the crash-safe on-disk ring buffer
 internal/recorder   the daemon: sampling loop, archiving, start-up analysis
 internal/journal    reads a boot's entries via journalctl
-internal/pstore     reads kernel crash logs saved to firmware
+internal/pstore     reads kernel crash logs saved by pstore or kdump
 internal/analyze    evidence gathering and the verdict rules
 internal/report     report schema and on-disk store
 internal/render     terminal text and the standalone HTML page
@@ -93,8 +93,11 @@ it to `/var/lib/beebox/boots/` and, after a few seconds, gathers evidence:
 1. the archived ring (samples and kernel messages);
 2. the journal for that boot: the last 1500 entries, the last 3000 kernel
    entries and up to 500 warnings (`journalctl -b <boot-id> -o json`);
-3. kernel crash logs from `/sys/fs/pstore` and `/var/lib/systemd/pstore`
-   written since that boot started.
+3. kernel crash logs written since that boot started: pstore's
+   (`/sys/fs/pstore`, `/var/lib/systemd/pstore`) and kdump's (`dmesg.*` and
+   `vmcore-dmesg.txt` under `/var/crash`). Only regular, root-owned files
+   with a single link are read, and only their last 256 KB (`/var/crash` is
+   world-writable on Ubuntu, so a planted file or link is ignored).
 
 Sources are merged into one timeline, de-duplicated (the same kernel line
 arrives from both the ring and the journal) and passed to a list of

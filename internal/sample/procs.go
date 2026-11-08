@@ -141,6 +141,7 @@ func (p *procScanner) scan(ncpu, top int) (int, []App, []App) {
 			delete(p.prev, k)
 		}
 	}
+	mergeLauncher(p.scratch)
 	apps := make([]App, 0, len(p.scratch))
 	for _, a := range p.scratch {
 		a.CPU = round1(a.CPU)
@@ -149,6 +150,48 @@ func (p *procScanner) scan(ncpu, top int) (int, []App, []App) {
 	}
 	return count, topBy(apps, top, func(a App) float64 { return float64(a.MemKB) }),
 		topBy(apps, top, func(a App) float64 { return a.CPU })
+}
+
+// Debian's "default browser" commands are links to the real browser, so a
+// browser started from the menu or a link runs its first process under the
+// launcher's name (x-www-browser) and its helpers under its own
+// (firefox-esr). Without merging, one browser shows up as two apps.
+var (
+	browserLaunchers = []string{"x-www-browser", "www-browser", "gnome-www-browser", "sensible-browser"}
+	browserNames     = map[string]bool{
+		"firefox": true, "firefox-esr": true, "firefox-bin": true, "librewolf": true,
+		"chrome": true, "google-chrome": true, "chromium": true, "chromium-browser": true,
+		"brave": true, "msedge": true, "opera": true, "vivaldi-bin": true,
+		"epiphany": true, "falkon": true, "qutebrowser": true, "konqueror": true,
+	}
+)
+
+// mergeLauncher folds a launcher-named app into the browser when exactly
+// one browser is running; otherwise it is left alone ("Web browser").
+func mergeLauncher(apps map[string]*appAcc) {
+	var browser *appAcc
+	for name, a := range apps {
+		if browserNames[name] {
+			if browser != nil {
+				return // two browsers: can't tell which one the launcher started
+			}
+			browser = a
+		}
+	}
+	if browser == nil {
+		return
+	}
+	for _, l := range browserLaunchers {
+		a := apps[l]
+		if a == nil {
+			continue
+		}
+		browser.Count += a.Count
+		browser.MemKB += a.MemKB
+		browser.CPU += a.CPU
+		browser.shmemMax = max(browser.shmemMax, a.shmemMax)
+		delete(apps, l)
+	}
 }
 
 func topBy(apps []App, n int, key func(App) float64) []App {

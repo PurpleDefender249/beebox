@@ -105,7 +105,7 @@ full report in your browser — a self-contained page that follows your light or
 | | What happened | How BeeBox knows |
 | :-: | --- | --- |
 | 🧠 | **Ran out of memory** and froze | Pressure-stall info, free memory, swap, the kernel's OOM killer, systemd-oomd/earlyoom, and its own once-a-second check running late |
-| 💥 | **Kernel panic, lockup or bug** | Kernel crash logs saved to firmware (pstore), panic/oops/lockup messages, the faulting function and program |
+| 💥 | **Kernel panic, lockup or bug** | Kernel crash logs saved to firmware (pstore) or by kdump, panic/oops/lockup messages, the faulting function and program |
 | 🔧 | **Hardware error** | Machine-check (MCE) reports from the CPU |
 | 🖥️ | **Graphics driver hang** | amdgpu, i915, nouveau and NVIDIA (Xid, "fallen off the bus") reset and timeout messages |
 | 🌡️ | **Overheating** | Temperatures against each sensor's critical limit, throttling and thermal shutdown messages |
@@ -235,7 +235,7 @@ flowchart LR
   subgraph next["Next start-up"]
     F --> A[Analyser]
     J[(systemd journal)] --> A
-    S[("pstore crash log")] --> A
+    S[("pstore / kdump crash log")] --> A
     A --> Rep[("Report (JSON)")]
     Rep --> N[Desktop notification]
     Rep --> V["beebox last / beebox view"]
@@ -340,6 +340,17 @@ No. See <a href="#light-on-your-system">the numbers above</a>.
 <br>
 Run <code>sudo beebox analyze</code>. If your journal kept the previous boot, BeeBox can
 still give a verdict from the logs.
+</details>
+
+<details>
+<summary><strong>My computer starts in legacy BIOS mode. Can BeeBox still catch kernel crashes?</strong></summary>
+<br>
+Yes, with kdump. UEFI computers can keep a kernel crash log in firmware; legacy-BIOS
+ones (including many virtual machines) can't, so there a kernel crash looks just like a
+power cut. kdump fixes that by keeping a little memory for a spare kernel that saves
+the crashed kernel's log. Run <code>beebox doctor</code>: the <em>Kernel crash logs</em>
+line shows the one command to set it up on Debian, Ubuntu, Kali, Mint and Fedora.
+Restart once afterwards.
 </details>
 
 <details>

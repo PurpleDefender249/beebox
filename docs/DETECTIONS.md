@@ -17,7 +17,7 @@ recorded sample or journal entry, whichever is later.
 | Verdict (ID) | Main signals | Typical confidence |
 | --- | --- | --- |
 | Out of memory (`out-of-memory`) | Memory pressure "full" in the final minute (≥40% strong, ≥10% moderate), available memory under 3% or 8%, swap over 90% full, the recorder running late, kernel OOM kills or systemd-oomd/earlyoom kills in the last 5 minutes | 30–95 |
-| Kernel panic (`kernel-panic`) | `Kernel panic - not syncing` in pstore (95) or the logs (85); the faulting function (`RIP:`/`pc :`) and program (`Comm:`) are named | 85–95 |
+| Kernel panic (`kernel-panic`) | `Kernel panic - not syncing` in the crashed kernel's own log, from pstore or kdump (95), or the system log (85); the faulting function (`RIP:`/`pc :`) and program (`Comm:`) are named | 85–95 |
 | Deliberate crash (`kernel-panic`) | `sysrq: Trigger a crash` near the end | 97 |
 | Kernel lockup (`kernel-lockup`) | Soft/hard lockup or RCU stall messages, stronger within 10 minutes of the end | 50–78 |
 | Kernel bug (`kernel-bug`) | Oops, NULL pointer dereference, general protection fault | 45–70 |
@@ -32,7 +32,7 @@ recorded sample or journal entry, whichever is later.
 | Disk stall (`io-stall`) | I/O pressure "full" ≥40% in the final minute | 45–55 |
 | Disk full (`disk-full`) | Less than 1% free on `/` at the end | 45 |
 | Froze (`froze`) | The recorder's own check ran ≥5 s late, with no more specific cause | 40 |
-| Power cut (`power-loss`) | A recording that stops abruptly while everything was healthy, nothing serious in the logs, on mains power, **on a computer that can save kernel crash logs** (so the absence of one rules out a kernel crash) | 55 |
+| Power cut (`power-loss`) | A recording that stops abruptly while everything was healthy, nothing serious in the logs, on mains power, **on a computer that can save kernel crash logs** with pstore or kdump (so the absence of one rules out a kernel crash) | 55 |
 | Sudden stop (`sudden-stop`) | The same without kernel crash logs (45: a power cut and a kernel crash look identical, so BeeBox says so); on battery with charge left (35: hard power-off or hardware lockup); or logs that end with no errors and no recording (35) | 35–45 |
 | Unknown (`unknown`) | Nothing above applies | 0 |
 

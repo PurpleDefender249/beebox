@@ -7,6 +7,7 @@ import (
 
 	"github.com/PurpleDefender249/beebox/internal/analyze"
 	"github.com/PurpleDefender249/beebox/internal/journal"
+	"github.com/PurpleDefender249/beebox/internal/pstore"
 	"github.com/PurpleDefender249/beebox/internal/report"
 	"github.com/PurpleDefender249/beebox/internal/ring"
 	"github.com/PurpleDefender249/beebox/internal/sample"
@@ -257,6 +258,11 @@ func TestBusyCPUThenSuddenStop(t *testing.T) {
 		if i >= n-210 {
 			s.CPU = 100
 			s.TopCPU = []sample.App{{Name: "stress-ng", Count: 4, CPU: 97}, {Name: "Xorg", Count: 1, CPU: 2}}
+			// Real recordings dip for a second now and then (a sample at
+			// 94.7% hid three busy minutes in a report from Kali).
+			if i == n-8 || i == n-120 || i == n-121 {
+				s.CPU = 86
+			}
 		}
 		rc.Samples = append(rc.Samples, s)
 	}
@@ -296,5 +302,43 @@ func TestOOMProtectorCommand(t *testing.T) {
 		if got := c.env.OOMProtectorCommand(); got != c.want {
 			t.Errorf("%+v: got %q, want %q", c.env, got, c.want)
 		}
+	}
+}
+
+// kdump saves the crashed kernel's log on computers without pstore (legacy
+// BIOS). Its file has no "<level>" prefixes and holds the whole log; the
+// journal usually lost the last lines.
+func TestKdumpLogNamesAKernelCrash(t *testing.T) {
+	in, err := scenario.Build("sysrq-crash", end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Journal, in.KernelLog = in.Journal[:0], nil
+	in.Env.CrashLogs = true
+	in.Pstore = []pstore.Record{{
+		Path:   "/var/crash/202611081123/dmesg.202611081123",
+		Time:   end.Add(40 * time.Second),
+		Source: "kdump",
+		// As makedumpfile writes it, with the kernel's caller IDs.
+		Text: "[    0.000000] [      T0] Linux version 6.19.14+kali-amd64\n" +
+			"[ 8040.112233] [   T9120] sysrq: Trigger a crash\n" +
+			"[ 8040.112301] [   T9120] Kernel panic - not syncing: sysrq triggered crash\n" +
+			"[ 8040.112380] [   T9120] CPU: 2 PID: 9120 Comm: bash Not tainted 6.19.14+kali-amd64\n",
+	}}
+	r := analyze.Analyze(in)
+	if r == nil || r.Verdict.ID != "kernel-panic" || r.Verdict.Confidence < 95 || !strings.Contains(r.Verdict.Title, "on purpose") {
+		t.Fatalf("want a deliberate kernel crash from the kdump log, got %+v", r.Verdict)
+	}
+	fromKdump := false
+	seen := map[string]bool{}
+	for _, l := range r.Verdict.Evidence {
+		fromKdump = fromKdump || l.Source == "kdump"
+		if strings.Contains(l.Text, "T9120") || seen[l.Text] {
+			t.Fatalf("evidence should be clean and listed once: %+v", r.Verdict.Evidence)
+		}
+		seen[l.Text] = true
+	}
+	if !fromKdump || !r.Sources.Pstore {
+		t.Fatalf("evidence should come from kdump: %+v", r.Verdict.Evidence)
 	}
 }

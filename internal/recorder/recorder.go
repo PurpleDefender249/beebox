@@ -345,6 +345,9 @@ func analysePrevious(ctx context.Context, opt Options, prev previousBoot, log *s
 	defer os.Remove(marker)
 
 	start := time.Now()
+	// kdump's service loads its crash kernel during start-up, possibly
+	// after BeeBox: wait for it so the report knows crash logs are on.
+	pstore.WaitForKdump(ctx, time.Minute)
 	in, err := analyze.Gather(ctx, analyze.GatherOptions{
 		RingPath:   prev.ringPath,
 		Previous:   true,

@@ -89,8 +89,8 @@ func rulePanic(c *ruleCtx) *report.Finding {
 	if len(panics) > 0 {
 		conf := 85
 		for _, p := range panics {
-			if p.Source == "pstore" {
-				conf = 95
+			if p.Source == "pstore" || p.Source == "kdump" {
+				conf = 95 // the crashed kernel's own log, saved after the fact
 			}
 		}
 		reason := ""
@@ -782,7 +782,7 @@ func ruleBusyCPU(c *ruleCtx) *report.Finding {
 	if m.n == 0 || c.in.Clean || m.busyFor < time.Minute {
 		return nil
 	}
-	summary := fmt.Sprintf("For the last %s before recording stopped, the processor was at least 95%% busy.", roundDur(m.busyFor))
+	summary := fmt.Sprintf("For the last %s before recording stopped, the processor was almost fully busy (90%% or more).", roundDur(m.busyFor))
 	if m.busyApp.Name != "" {
 		summary += fmt.Sprintf(" The busiest app was %s (about %.0f%% of the whole processor", displayName(m.busyApp.Name), m.busyApp.CPU)
 		if m.busyApp.Count > 1 {

@@ -73,16 +73,26 @@ func collectLines(in *Input) []logLine {
 		}
 	}
 	for _, rec := range in.Pstore {
+		src := rec.Source
+		if src == "" {
+			src = "pstore"
+		}
 		for _, line := range strings.Split(rec.Text, "\n") {
 			t, text := splitKernelTimestamp(line, in.BootStart, rec)
-			add(logLine{Time: t, Source: "pstore", Ident: "kernel", Text: text, Prio: 2})
+			add(logLine{Time: t, Source: src, Ident: "kernel", Text: text, Prio: 2})
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Time.Before(out[j].Time) })
 	return out
 }
 
-var kernelTS = regexp.MustCompile(`^(?:<\d+>)?\[\s*(\d+)\.(\d+)\]\s?`)
+var (
+	kernelTS = regexp.MustCompile(`^(?:<\d+>)?\[\s*(\d+)\.(\d+)\]\s?`)
+	// callerID is the "[  T3273]" (task) or "[  C1]" (CPU) tag that
+	// kernels built with CONFIG_PRINTK_CALLER add after the timestamp, as
+	// kdump's makedumpfile writes it.
+	callerID = regexp.MustCompile(`^\[\s*[TC]\d+\]\s?`)
+)
 
 // splitKernelTimestamp converts "[  123.456789] msg" into an absolute time
 // using the boot start, falling back to the pstore record's time.
@@ -99,7 +109,7 @@ func splitKernelTimestamp(line string, bootStart time.Time, rec pstore.Record) (
 		frac += "0"
 	}
 	usec, _ := strconv.ParseInt(frac[:6], 10, 64)
-	text := line[m[1]:]
+	text := callerID.ReplaceAllString(line[m[1]:], "")
 	if bootStart.IsZero() {
 		return rec.Time, text
 	}
@@ -130,6 +140,18 @@ func lastLine(ls []logLine) (logLine, bool) {
 
 // evidence converts up to max lines (the most recent ones) to report lines.
 func evidence(ls []logLine, max int) []report.Line {
+	// Rules often combine several matches of the same timeline, so one
+	// line can arrive twice; keep each once, in time order.
+	uniq := make([]logLine, 0, len(ls))
+	seen := map[logLine]bool{}
+	for _, l := range ls {
+		if !seen[l] {
+			seen[l] = true
+			uniq = append(uniq, l)
+		}
+	}
+	sort.SliceStable(uniq, func(i, j int) bool { return uniq[i].Time.Before(uniq[j].Time) })
+	ls = uniq
 	if len(ls) > max {
 		ls = ls[len(ls)-max:]
 	}

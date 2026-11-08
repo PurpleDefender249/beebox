@@ -4,6 +4,43 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-08
+
+### Added
+
+- Kernel crash logs on computers and virtual machines that start in legacy
+  BIOS mode: BeeBox reads the log that kdump saves in `/var/crash`
+  (kdump-tools on Debian, Ubuntu, Kali and Mint; kexec-tools on Fedora), so
+  a kernel crash there is named instead of being reported as a sudden stop,
+  and a power cut is reported as one. `beebox doctor` shows the command to
+  set kdump up, and says when it is installed but not ready yet. Tested end
+  to end on a legacy-BIOS Debian 13 virtual machine.
+- `beebox doctor` recognises virtual machines ("virtual machines have no
+  temperature sensors"), and on real hardware without sensors shows the
+  lm-sensors command.
+
+### Fixed
+
+- A processor running flat out for minutes was missed when a single sample
+  dipped below 95%: the report said the CPU "looked normal" and left out the
+  "processor was fully busy" note. Brief dips no longer end the stretch, and
+  busy now means 90% or more.
+- A browser started through Debian's default-browser command
+  (`x-www-browser`) was listed twice, as "Firefox" and "Web browser". Its
+  processes are now counted together (in recordings made from now on).
+- An evidence line could be listed twice in a report.
+- Kernel log lines saved with the kernel's caller IDs (`[ T3273]`) showed
+  them in reports.
+- `beebox doctor` run as a normal user didn't find `update-grub`, so it
+  left out the command to switch on UEFI crash logs.
+
+### Security
+
+- Kernel crash logs are only read from regular, root-owned files with a
+  single link, without following links: `/var/crash` is world-writable on
+  Ubuntu, so a planted file can't fake a crash or copy another file into a
+  report.
+
 ## [0.2.0] - 2026-11-08
 
 ### Added
@@ -86,6 +123,7 @@ First release.
 - The BeeBox logo: a bee with a striped recorder-box body in a honeycomb
   cell, with a simplified version for 16–32 px and PNGs for icon themes.
 
+[0.3.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.3.0
 [0.2.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.2.0
 [0.1.1]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.1
 [0.1.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.0

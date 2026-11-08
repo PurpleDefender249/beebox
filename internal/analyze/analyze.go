@@ -37,7 +37,7 @@ type Env struct {
 	PkgManager   string // apt, dnf, pacman, zypper or ""
 	OOMProtector string // systemd-oomd, earlyoom, nohang or ""
 	// CrashLogs is true when the kernel can save a crash log that survives
-	// a reboot (pstore). Without it a kernel crash leaves no trace and looks
+	// a reboot (pstore or kdump). Without it a kernel crash leaves no trace and looks
 	// exactly like a power cut, so BeeBox must not claim to tell them apart.
 	CrashLogs bool
 	// HasOOMD is true when the systemd-oomd unit is installed (it is a
