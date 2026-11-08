@@ -116,7 +116,8 @@ func (e Env) Install(pkg string) string { return e.install(pkg) }
 func (e Env) ZramCommand() string {
 	switch e.PkgManager {
 	case "apt":
-		return "sudo apt install zram-tools"
+		// Enable explicitly: Kali leaves newly installed services switched off.
+		return "sudo apt install -y zram-tools && sudo systemctl enable --now zramswap"
 	case "dnf":
 		return "sudo dnf install zram-generator-defaults && sudo systemctl restart systemd-zram-setup@zram0"
 	case "pacman":

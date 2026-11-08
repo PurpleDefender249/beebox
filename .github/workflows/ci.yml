@@ -101,7 +101,9 @@ jobs:
           sudo install -m755 build/linux-amd64/beebox /usr/bin/beebox
           systemd-analyze --version | head -n 1
           systemd-analyze verify --man=no --recursive-errors=no packaging/systemd/beebox.service
-          systemd-analyze security --offline=true --threshold=2 packaging/systemd/beebox.service
+          # --threshold is on a 0-100 scale: 20 means "exposure 2.0 or lower"
+          # (BeeBox scores 1.4).
+          systemd-analyze security --offline=true --threshold=20 packaging/systemd/beebox.service
 
       # GitHub's runners boot with systemd, so the steps below exercise the
       # real, sandboxed service end to end.

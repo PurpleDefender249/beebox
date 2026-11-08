@@ -51,7 +51,13 @@ common_checks() {
         fi
         # shellcheck disable=SC2086 # $recursive is empty or one option
         systemd-analyze verify --man=no $recursive /usr/lib/systemd/system/beebox.service
-        systemd-analyze security --offline=true --threshold=2 /usr/lib/systemd/system/beebox.service | tail -n 1
+        # The exposure score must stay at 2.0 or lower (--threshold counts in
+        # tenths). systemd before 250 has no offline mode, so skip it there.
+        if systemd-analyze security --help 2>/dev/null | grep -q -- '--offline'; then
+            score=$(systemd-analyze security --offline=true --threshold=20 /usr/lib/systemd/system/beebox.service) \
+                || fail "systemd-analyze security: exposure above 2.0"
+            printf '%s\n' "$score" | tail -n 1
+        fi
     fi
 }
 
