@@ -21,7 +21,7 @@ import (
 func init() {
 	var drJSON, drStrict bool
 	register(&command{
-		name: "doctor", group: "Everyday", summary: "Check this computer is ready to catch the next crash",
+		name: "doctor", banner: true, group: "Everyday", summary: "Check this computer is ready to catch the next crash",
 		long: "Checks the recorder, system logs, memory protection, swap, kernel crash logs and notifications, and prints the exact command to fix anything missing. Nothing is changed for you.",
 		flags: func(fs *flag.FlagSet) func() {
 			fs.BoolVar(&drJSON, "json", false, "print results as JSON")
@@ -42,18 +42,24 @@ func init() {
 		run: func(ctx context.Context, a *App, args []string) error { return a.record(ctx, recConfig) },
 	})
 
-	var verJSON bool
+	var verJSON, verVerbose bool
 	register(&command{
 		name: "version", group: "Other", summary: "Print the version",
+		long: "Prints the version, for example \"beebox 0.2.0\". Use --verbose for the commit, build date, Go version and platform (useful in bug reports), or --json for scripts.",
 		flags: func(fs *flag.FlagSet) func() {
-			fs.BoolVar(&verJSON, "json", false, "print as JSON")
+			fs.BoolVar(&verJSON, "json", false, "print the version and build details as JSON")
+			fs.BoolVar(&verVerbose, "verbose", false, "also print the commit, build date, Go version and platform")
 			return nil
 		},
 		run: func(ctx context.Context, a *App, args []string) error {
-			if verJSON {
-				return json.NewEncoder(a.Stdout).Encode(map[string]string{"version": version.Short(), "commit": version.Commit, "date": version.Date})
+			switch {
+			case verJSON:
+				return json.NewEncoder(a.Stdout).Encode(version.Details())
+			case verVerbose:
+				fmt.Fprintln(a.Stdout, version.Long())
+			default:
+				fmt.Fprintln(a.Stdout, "beebox "+version.Short())
 			}
-			fmt.Fprintln(a.Stdout, version.Long())
 			return nil
 		},
 	})

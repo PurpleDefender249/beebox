@@ -22,7 +22,7 @@ func readRecordingState(p paths.Paths) doctor.Recording { return doctor.ReadReco
 func init() {
 	var stJSON bool
 	register(&command{
-		name: "status", group: "Everyday", summary: "Check that BeeBox is recording",
+		name: "status", banner: true, group: "Everyday", summary: "Check that BeeBox is recording",
 		long: "Shows whether the recorder is running, how much history it keeps, what it measures right now, and the latest report. Exits with status 3 when BeeBox is not recording.",
 		flags: func(fs *flag.FlagSet) func() {
 			fs.BoolVar(&stJSON, "json", false, "print as JSON")
@@ -33,7 +33,7 @@ func init() {
 
 	var nowWatch, nowJSON bool
 	register(&command{
-		name: "now", group: "Everyday", summary: "Show what BeeBox is measuring right now",
+		name: "now", banner: true, group: "Everyday", summary: "Show what BeeBox is measuring right now",
 		long: "Shows the latest measurements: memory, stalls, temperatures, battery and the apps using the most memory. Works even when the recorder isn't running.",
 		flags: func(fs *flag.FlagSet) func() {
 			fs.BoolVar(&nowWatch, "watch", false, "keep updating every second (Ctrl+C to stop)")

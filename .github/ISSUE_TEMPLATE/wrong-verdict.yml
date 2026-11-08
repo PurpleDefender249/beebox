@@ -36,7 +36,7 @@ body:
     id: system
     attributes:
       label: System
-      description: Distribution and kernel (`uname -r`), and `beebox version`.
+      description: Distribution and kernel (`uname -r`), and `beebox version --verbose`.
       placeholder: Ubuntu 24.04, 6.11.0-19-generic, beebox 0.1.0
     validations:
       required: true

@@ -42,7 +42,7 @@ var completionFlags = map[string][]string{
 	"doctor":     {"--json", "--strict"},
 	"record":     {"--config"},
 	"notify":     {"--wait", "--test"},
-	"version":    {"--json"},
+	"version":    {"--verbose", "--json"},
 	"completion": {},
 	"help":       {},
 }
@@ -61,7 +61,7 @@ func visibleNames() []string {
 func bashCompletion() string {
 	var cases strings.Builder
 	for _, n := range visibleNames() {
-		fmt.Fprintf(&cases, "    %s) opts=\"%s --plain --no-color --help\" ;;\n", n, strings.Join(completionFlags[n], " "))
+		fmt.Fprintf(&cases, "    %s) opts=\"%s --plain --no-color --no-banner --help\" ;;\n", n, strings.Join(completionFlags[n], " "))
 	}
 	return `# bash completion for beebox
 _beebox() {
@@ -69,7 +69,7 @@ _beebox() {
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    mapfile -t COMPREPLY < <(compgen -W "` + strings.Join(visibleNames(), " ") + ` --help --version" -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -W "` + strings.Join(visibleNames(), " ") + ` --help --version --plain --no-color --no-banner" -- "$cur")
     return
   fi
   cmd="${COMP_WORDS[1]}"
@@ -124,7 +124,7 @@ func zshCompletion() string {
 		case "completion":
 			extra = " '1:shell:(bash zsh fish)'"
 		}
-		fmt.Fprintf(&cases, "    %s) _arguments %s '--plain' '--no-color' '--help'%s ;;\n", n, strings.Join(specs, " "), extra)
+		fmt.Fprintf(&cases, "    %s) _arguments %s '--plain' '--no-color' '--no-banner' '--help'%s ;;\n", n, strings.Join(specs, " "), extra)
 	}
 	return `#compdef beebox
 # zsh completion for beebox
@@ -169,6 +169,6 @@ func fishCompletion() string {
 	}
 	b.WriteString("complete -c beebox -n '__fish_seen_subcommand_from show view' -a '(beebox list --ids 2>/dev/null)'\n")
 	b.WriteString("complete -c beebox -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish'\n")
-	b.WriteString("complete -c beebox -l plain -d 'No colour or graphics'\ncomplete -c beebox -l no-color -d 'No colour'\n")
+	b.WriteString("complete -c beebox -l plain -d 'No colour or graphics'\ncomplete -c beebox -l no-color -d 'No colour'\ncomplete -c beebox -l no-banner -d 'No banner'\n")
 	return b.String()
 }

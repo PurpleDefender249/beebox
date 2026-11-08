@@ -10,7 +10,7 @@ Open an issue with the "Wrong verdict" template and include:
 
 - what actually happened, if you know;
 - `beebox show --json` for the report (read it first, see [docs/PRIVACY.md](docs/PRIVACY.md));
-- your distribution, kernel (`uname -r`) and BeeBox version (`beebox version`).
+- your distribution, kernel (`uname -r`) and BeeBox version (`beebox version --verbose`).
 
 ## Development
 

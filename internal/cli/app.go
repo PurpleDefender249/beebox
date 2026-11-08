@@ -32,6 +32,9 @@ type App struct {
 	Paths  paths.Paths
 	Style  term.Style
 	Width  int
+	Banner bool // show the banner on interactive output (see banner.go)
+
+	bannerShown bool
 }
 
 // UsageError is reported with exit code 2.
@@ -55,6 +58,7 @@ type command struct {
 	flags   func(fs *flag.FlagSet) func() // registers flags, returns a finaliser
 	run     func(ctx context.Context, a *App, args []string) error
 	hidden  bool
+	banner  bool // show the banner above human-readable output
 }
 
 var commands []*command
@@ -76,6 +80,7 @@ func Main(ctx context.Context, args []string) int {
 	a := &App{Stdout: os.Stdout, Stderr: os.Stderr, Out: os.Stdout, Paths: paths.FromEnv()}
 	a.Style = term.Detect(os.Stdout)
 	a.Width = term.Width(os.Stdout, 80)
+	a.Banner = bannerWanted(os.Stdout)
 	return a.Run(ctx, args)
 }
 
@@ -89,11 +94,13 @@ func (a *App) Run(ctx context.Context, args []string) int {
 		case "--plain":
 			a.Style.Plain = true
 			a.Style.Color = false
+		case "--no-banner":
+			a.Banner = false
 		case "-h", "--help":
 			a.printHelp()
 			return ExitOK
 		case "-V", "--version":
-			fmt.Fprintln(a.Stdout, version.Long())
+			fmt.Fprintln(a.Stdout, "beebox "+version.Short())
 			return ExitOK
 		default:
 			fmt.Fprintf(a.Stderr, "beebox: unknown option %s\nRun 'beebox help' for usage.\n", args[0])
@@ -122,6 +129,7 @@ func (a *App) Run(ctx context.Context, args []string) int {
 	fs.BoolVar(help, "h", false, "show help for this command")
 	noColor := fs.Bool("no-color", false, "disable colour")
 	plain := fs.Bool("plain", false, "plain output: no colour or graphics (good for screen readers)")
+	noBanner := fs.Bool("no-banner", false, "don't show the BeeBox banner")
 	var finish func()
 	if c.flags != nil {
 		finish = c.flags(fs)
@@ -141,8 +149,14 @@ func (a *App) Run(ctx context.Context, args []string) int {
 	if *plain {
 		a.Style.Plain, a.Style.Color = true, false
 	}
+	if *noBanner {
+		a.Banner = false
+	}
 	if finish != nil {
 		finish()
+	}
+	if c.banner && !machineOutput(fs) {
+		a.showBanner()
 	}
 	if err := c.run(ctx, a, pos); err != nil {
 		var ue UsageError
@@ -183,6 +197,7 @@ func parseInterspersed(fs *flag.FlagSet, args []string) ([]string, error) {
 }
 
 func (a *App) printHelp() {
+	a.showBanner()
 	st := a.Style
 	w := a.Stdout
 	fmt.Fprintf(w, "%s explains why your Linux computer crashed, froze or lost power.\n\n", st.Bold("beebox"))
@@ -204,7 +219,13 @@ func (a *App) printHelp() {
 		}
 		fmt.Fprintln(w)
 	}
-	fmt.Fprintf(w, "%s\n  --plain       no colour or graphics (also: BEEBOX_PLAIN=1, NO_COLOR=1)\n  --no-color    no colour\n  -h, --help    help for beebox or a command\n  -V, --version print the version\n\n", st.Bold("Options"))
+	fmt.Fprintf(w, "%s\n", st.Bold("Options"))
+	fmt.Fprintln(w, "  --plain       no colour, graphics or banner (also: BEEBOX_PLAIN=1)")
+	fmt.Fprintln(w, "  --no-color    no colour (also: NO_COLOR=1)")
+	fmt.Fprintln(w, "  --no-banner   no banner (also: BEEBOX_NO_BANNER=1)")
+	fmt.Fprintln(w, "  -h, --help    help for beebox or a command")
+	fmt.Fprintln(w, "  -V, --version print the version")
+	fmt.Fprintln(w)
 	fmt.Fprintf(w, "Run 'beebox help <command>' for details, or see 'man beebox'.\n")
 }
 

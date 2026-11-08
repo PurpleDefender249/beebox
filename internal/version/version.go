@@ -29,16 +29,29 @@ func Short() string {
 	return Version
 }
 
-// Long returns a multi-field description suitable for `beebox version`.
+// Long returns the version with its build details, one per line, for
+// `beebox version --verbose` and bug reports.
 func Long() string {
-	commit := Commit
-	if commit == "" {
-		commit = "unknown"
+	d := Details()
+	return fmt.Sprintf("beebox %s\n  commit    %s\n  built     %s\n  go        %s\n  platform  %s",
+		d["version"], orUnknown(d["commit"]), orUnknown(d["date"]), d["go"], d["platform"])
+}
+
+// Details returns the version and build details as a map, for
+// `beebox version --json`.
+func Details() map[string]string {
+	return map[string]string{
+		"version":  Short(),
+		"commit":   Commit,
+		"date":     Date,
+		"go":       runtime.Version(),
+		"platform": runtime.GOOS + "/" + runtime.GOARCH,
 	}
-	date := Date
-	if date == "" {
-		date = "unknown"
+}
+
+func orUnknown(s string) string {
+	if s == "" {
+		return "unknown"
 	}
-	return fmt.Sprintf("beebox %s (commit %s, built %s, %s, %s/%s)",
-		Short(), commit, date, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	return s
 }

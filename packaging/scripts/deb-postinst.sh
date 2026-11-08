@@ -33,6 +33,14 @@ fi
 
 if [ "$1" = configure ] && [ -z "$2" ]; then
     echo
+    # The banner appears only on a terminal (never in logs, Docker builds or
+    # CI) and honours BEEBOX_NO_BANNER=1, BEEBOX_PLAIN=1 and NO_COLOR. apt
+    # runs this script on a pseudo-terminal even when its output is a log,
+    # so unattended installs (DEBIAN_FRONTEND=noninteractive) skip it too.
+    # It can't fail the installation.
+    if [ "${DEBIAN_FRONTEND:-}" != noninteractive ]; then
+        beebox banner 2>/dev/null || true
+    fi
     if [ -d /run/systemd/system ] && systemctl is-active --quiet beebox.service 2>/dev/null; then
         echo "BeeBox is recording. If this computer crashes, freezes or loses power,"
         echo "the next start-up will tell you why."

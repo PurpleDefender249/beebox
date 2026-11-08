@@ -7,7 +7,7 @@ BeeBox's recorder runs as root, so security reports are taken seriously.
 Please **do not open a public issue**. Use GitHub's private vulnerability
 reporting: on the repository page choose **Security → Report a
 vulnerability**. You'll get a reply within a week. Please include steps to
-reproduce and the BeeBox version (`beebox version`).
+reproduce and the BeeBox version (`beebox version --verbose`).
 
 ## Supported versions
 

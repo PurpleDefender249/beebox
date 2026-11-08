@@ -123,7 +123,8 @@ install_apt() {
     # A problem with some other repository shouldn't stop this; if the
     # BeeBox repository itself can't be read, the install below says so.
     run env DEBIAN_FRONTEND=noninteractive apt-get update || say "${Y}Note:${N} apt-get update reported problems (see above); trying to install anyway."
-    run env DEBIAN_FRONTEND=noninteractive apt-get install -y beebox
+    # BEEBOX_NO_BANNER: the banner is shown once, at the end, by "beebox status".
+    run env BEEBOX_NO_BANNER=1 DEBIAN_FRONTEND=noninteractive apt-get install -y beebox
 }
 
 install_dnf() {
@@ -133,7 +134,7 @@ install_dnf() {
         "$REPO_URL" "$REPO_URL" >"$tmp/beebox.repo"
     run install -m 0644 "$tmp/beebox.repo" "$DNF_REPO"
     step "Installing BeeBox"
-    run dnf install -y beebox
+    run env BEEBOX_NO_BANNER=1 dnf install -y beebox
 }
 
 install_pacman() {

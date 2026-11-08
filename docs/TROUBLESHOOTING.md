@@ -24,6 +24,7 @@ check it worked and a way to undo it.
 | `dnf`: `GPG check FAILED` / `repomd.xml GPG signature verification error` | Repository key problem | [6](#6-repository-errors) |
 | Install says "unpacking … over (0.1.0)" and the service is gone | An early test build was upgraded in place | [7](#7-reinstalling-cleanly) |
 | One-line installer: `curl: (22) … 404` | The package site isn't published at that address yet | [8](#8-the-one-line-installer-says-404) |
+| Odd characters such as `[1;33m`, question marks or empty boxes above the output, or you'd rather not see the banner | A terminal without colour, or a font without block characters, or personal taste | [9](#9-the-banner) |
 
 ## 1. The service isn't running
 
@@ -179,7 +180,7 @@ The installer and the package repository are served by GitHub Pages from the
 - The address doesn't match the repository name exactly. Pages addresses are
   case-sensitive: a repository named `BeeBox` lives at `…github.io/BeeBox/`.
   Rename it to `beebox` (**Settings → General → Repository name**), then
-  republish: `gh workflow run release.yml -f tag=v0.1.1`.
+  republish: `gh workflow run release.yml -f tag=v0.2.0` (the latest tag).
 
 Check which address answers:
 
@@ -187,11 +188,36 @@ Check which address answers:
 curl -sI https://purpledefender249.github.io/beebox/latest | head -1
 ```
 
+## 9. The banner
+
+Commands you read in a terminal (`status`, `last`, `doctor`, `beebox` on its own…)
+open with the BeeBox banner. It is never printed into a pipe, a file, a log or with
+`--json`. What it draws depends on the terminal: the pixel-art logo and 3D letters
+with colour and a UTF-8 locale (`echo $LANG` ends in `UTF-8`), the letters alone
+without colour or in a window narrower than 77 columns, and ASCII letters
+elsewhere.
+
+```sh
+beebox status --no-banner                         # once
+echo 'export BEEBOX_NO_BANNER=1' >> ~/.bashrc     # always (use ~/.zshrc for zsh, Kali's default)
+NO_COLOR=1 beebox status                          # keep the banner, drop the colour
+beebox status --plain                             # no colour, banner or graphics (screen readers)
+```
+
+If you see codes like `[1;33m` instead of colours, your terminal doesn't
+understand colour: use `NO_COLOR=1`, or set `TERM` correctly
+(`echo $TERM` should not say `dumb` or be empty in a normal terminal).
+
+If you see question marks or empty boxes instead of the letters, the terminal font
+has no block or box-drawing characters. Pick a font that does (DejaVu Sans Mono,
+Fira Code, Hack, JetBrains Mono, Noto Sans Mono), or use the ASCII banner:
+`LC_ALL=C beebox status`.
+
 ## Collecting information for a bug report
 
 ```sh
 {
-  beebox version; uname -r; grep PRETTY_NAME /etc/os-release; systemctl --version | head -1
+  beebox version --verbose; uname -r; grep PRETTY_NAME /etc/os-release; systemctl --version | head -1
   systemctl status beebox --no-pager -l
   journalctl -u beebox -b --no-pager -n 200
   beebox doctor --plain

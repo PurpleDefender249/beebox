@@ -38,7 +38,7 @@ func (o *outputFlags) register(fs *flag.FlagSet) {
 func init() {
 	var lastOut, showOut outputFlags
 	register(&command{
-		name: "last", group: "Everyday", summary: "Show the most recent crash report",
+		name: "last", banner: true, group: "Everyday", summary: "Show the most recent crash report",
 		long:  "Shows why your computer last crashed, froze or lost power, and what you can do about it. Reports are written automatically when the computer starts after an unexpected shutdown.",
 		flags: func(fs *flag.FlagSet) func() { lastOut.register(fs); return nil },
 		run: func(ctx context.Context, a *App, args []string) error {
@@ -49,7 +49,7 @@ func init() {
 		},
 	})
 	register(&command{
-		name: "show", group: "Everyday", args: "[id]", summary: "Show one report (default: the latest)",
+		name: "show", banner: true, group: "Everyday", args: "[id]", summary: "Show one report (default: the latest)",
 		long:  "Shows the report with the given ID. A unique prefix of the ID is enough; 'beebox list' shows the IDs.",
 		flags: func(fs *flag.FlagSet) func() { showOut.register(fs); return nil },
 		run: func(ctx context.Context, a *App, args []string) error {
@@ -66,7 +66,7 @@ func init() {
 
 	var listJSON, listIDs bool
 	register(&command{
-		name: "list", group: "Everyday", summary: "List crash reports, newest first",
+		name: "list", banner: true, group: "Everyday", summary: "List crash reports, newest first",
 		flags: func(fs *flag.FlagSet) func() {
 			fs.BoolVar(&listJSON, "json", false, "print as JSON")
 			fs.BoolVar(&listIDs, "ids", false, "print only report IDs (for scripts)")
@@ -78,7 +78,7 @@ func init() {
 	var viewPrint, viewSample bool
 	var viewScenario string
 	register(&command{
-		name: "view", group: "Everyday", args: "[id]", summary: "Open a report in your web browser",
+		name: "view", banner: true, group: "Everyday", args: "[id]", summary: "Open a report in your web browser",
 		long: "Writes the report as a self-contained web page in your cache folder and opens it. The page works offline and loads nothing from the internet. Use --sample to see what a report looks like before anything has gone wrong.",
 		flags: func(fs *flag.FlagSet) func() {
 			fs.BoolVar(&viewPrint, "print-path", false, "only write the page and print its path")
@@ -102,7 +102,7 @@ func init() {
 	var anSave bool
 	var anOut outputFlags
 	register(&command{
-		name: "analyze", group: "Investigate", summary: "Work out why a previous boot ended",
+		name: "analyze", banner: true, group: "Investigate", summary: "Work out why a previous boot ended",
 		long: "Analyses a previous boot on demand, using BeeBox's recording if one exists and the system journal. This also works for crashes that happened before BeeBox was installed, as long as the journal kept them. Run it with sudo to read the full kernel log.",
 		flags: func(fs *flag.FlagSet) func() {
 			fs.StringVar(&anBoot, "boot", "-1", "boot to analyse: an offset like -1 (previous boot) or a journal `BOOT_ID`")

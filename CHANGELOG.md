@@ -4,6 +4,29 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-11-08
+
+### Added
+
+- A banner: commands you read in a terminal (`beebox`, `status`, `last`,
+  `show`, `list`, `view`, `now`, `doctor`, `analyze`) open with the BeeBox
+  logo in pixel art beside "BEEBOX" in shaded 3D letters with a honey
+  gradient, the version, a tagline and the project link. It is shown right
+  after installation too. It adapts to the terminal: true colour, 256 or 16
+  colours; the letters alone without colour or in narrower windows; 3D
+  letters in plain ASCII where the locale isn't UTF-8 or on the Linux
+  console. It is never printed into pipes, files or logs, nor with `--json`,
+  `--ids`, `--print-path` or `--watch`. Turn it off with `--no-banner` or
+  `BEEBOX_NO_BANNER=1`; `--plain` and `NO_COLOR` are respected.
+- A redesigned README with the banner, highlights and both report themes.
+- `beebox version --verbose` prints the commit, build date, Go version and
+  platform; `beebox version --json` includes the Go version and platform.
+
+### Changed
+
+- `beebox --version`, `-V` and `beebox version` print only the version, for
+  example `beebox 0.2.0`.
+
 ## [0.1.1] - 2026-11-08
 
 ### Fixed
@@ -63,5 +86,6 @@ First release.
 - The BeeBox logo: a bee with a striped recorder-box body in a honeycomb
   cell, with a simplified version for 16–32 px and PNGs for icon themes.
 
+[0.2.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.2.0
 [0.1.1]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.1
 [0.1.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.0

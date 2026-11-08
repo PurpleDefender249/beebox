@@ -15,6 +15,10 @@ if [ -d /run/systemd/system ]; then
 fi
 if [ "$1" = 1 ]; then
     echo
+    # The banner appears only on a terminal (never in logs, Docker builds or
+    # CI) and honours BEEBOX_NO_BANNER=1, BEEBOX_PLAIN=1 and NO_COLOR. It
+    # can't fail the installation.
+    beebox banner 2>/dev/null || true
     if [ -d /run/systemd/system ] && systemctl is-active --quiet beebox.service 2>/dev/null; then
         echo "BeeBox is recording. If this computer crashes, freezes or loses power,"
         echo "the next start-up will tell you why."

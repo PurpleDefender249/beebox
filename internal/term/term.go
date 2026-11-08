@@ -65,6 +65,50 @@ func Detect(f *os.File) Style {
 	return s
 }
 
+// Depth is how many colours the terminal can show.
+type Depth int
+
+// Colour depths, from the safest to the richest.
+const (
+	Depth16   Depth = iota // the basic ANSI palette (Linux console, old terminals)
+	Depth256               // xterm 256-colour palette
+	DepthTrue              // 24-bit colour
+)
+
+// ColorDepth guesses the colour depth from COLORTERM and TERM, the same
+// signals ls, git, vim and most terminal tools use. It never queries the
+// terminal, so it is safe in pipes and under sudo.
+func ColorDepth() Depth {
+	switch strings.ToLower(os.Getenv("COLORTERM")) {
+	case "truecolor", "24bit":
+		return DepthTrue
+	}
+	t := os.Getenv("TERM")
+	if strings.Contains(t, "truecolor") || strings.Contains(t, "direct") {
+		return DepthTrue
+	}
+	if strings.Contains(t, "256") {
+		return Depth256
+	}
+	return Depth16
+}
+
+// Unicode reports whether the terminal can be expected to draw block and
+// box-drawing characters: the locale is UTF-8 (LC_ALL, LC_CTYPE or LANG, in
+// the order the C library uses) and it isn't the Linux console, whose
+// fonts vary.
+func Unicode() bool {
+	if os.Getenv("TERM") == "linux" {
+		return false
+	}
+	for _, k := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		if v := strings.ToLower(os.Getenv(k)); v != "" {
+			return strings.Contains(v, "utf-8") || strings.Contains(v, "utf8")
+		}
+	}
+	return false
+}
+
 func (s Style) wrap(code, text string) string {
 	if !s.Color || text == "" {
 		return text

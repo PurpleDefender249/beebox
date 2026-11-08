@@ -74,7 +74,14 @@ Print a completion script for
 .BR bash ", " zsh " or " fish .
 .TP
 .B version
-Print the version.
+Print the version, for example
+.BR "beebox 0.2.0" .
+With
+.BR \-\-verbose ,
+also print the commit, build date, Go version and platform (include this in
+bug reports);
+.B \-\-json
+prints all of them for scripts.
 .SH OPTIONS
 .TP
 .B \-\-json
@@ -87,15 +94,26 @@ Show every evidence line and finding.
 Write the report as a web page.
 .TP
 .B \-\-plain
-No colour, sparklines or other graphics. Recommended with screen readers.
+No colour, banner, sparklines or other graphics. Recommended with screen
+readers.
 .TP
 .B \-\-no\-color
 No colour.
+.TP
+.B \-\-no\-banner
+Don't show the BeeBox banner. The banner (the BeeBox logo and name, with
+the version and project link) appears above human-readable output only
+when that output goes to a terminal; it is never printed into pipes,
+files or logs, nor with
+.BR \-\-json .
 .TP
 .BR \-h ", " \-\-help
 Show help for
 .B beebox
 or a command.
+.TP
+.BR \-V ", " \-\-version
+Print the version and nothing else.
 .SH VERDICTS
 Each report names a probable cause with a confidence from 0 to 100,
 described in words as unclear, possibly, likely or very likely.
@@ -132,6 +150,12 @@ Disable colour (see https://no-color.org).
 .B BEEBOX_PLAIN
 Same as
 .BR \-\-plain .
+.TP
+.B BEEBOX_NO_BANNER
+Set to
+.B 1
+to never show the banner; same as
+.BR \-\-no\-banner .
 .TP
 .B BEEBOX_LOG
 Set to

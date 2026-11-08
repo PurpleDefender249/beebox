@@ -30,7 +30,9 @@ step "$PRETTY_NAME ($arch, $family)"
 
 common_checks() {
     step "checks"
-    beebox version
+    beebox version --verbose
+    beebox --version | grep -Eqx 'beebox [^ ]+' || fail "--version should print only the version"
+    [ -z "$(beebox banner)" ] || fail "the banner must not be printed into a pipe"
     test -x /usr/bin/beebox || fail "binary missing"
     test -f /usr/lib/systemd/system/beebox.service || fail "unit missing"
     test -f /etc/beebox/beebox.conf || fail "config missing"
