@@ -6,7 +6,8 @@ To start recording now and at every boot:
 
   sudo systemctl enable --now beebox
 
-Then run 'beebox doctor' to check nothing is missing.
+Then run 'sudo beebox setup' to switch on what BeeBox needs to catch
+crashes, and 'beebox doctor' to check nothing is missing.
 
 EOF
 exit 0

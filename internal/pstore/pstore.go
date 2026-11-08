@@ -5,7 +5,6 @@
 package pstore
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -162,40 +161,80 @@ func kdumpReady(sys string) bool {
 // survives a restart, by either means.
 func Available() bool { return Backend() != "" || KdumpReady() }
 
-// WaitForKdump gives kdump's service time to load the crash kernel during
-// start-up when memory is reserved for it but it isn't loaded yet, so that
-// an analysis made right after boot knows crash logs are switched on. It
-// returns at once when kdump is ready or not set up, and after max at most.
-func WaitForKdump(ctx context.Context, max time.Duration) {
-	waitForKdump(ctx, "/sys", max, time.Second)
+// Attempt is a kdump save that started but left no kernel log: kdump
+// creates a dated folder in /var/crash first, saves the log, then the
+// memory dump. A folder with no log means the kernel crashed, but the
+// spare kernel ran out of memory, couldn't read the log (a kernel too new
+// for makedumpfile) or was switched off before it finished.
+type Attempt struct {
+	Path   string
+	Time   time.Time
+	Files  []string // what kdump did save, e.g. "dump-incomplete"
+	HasLog bool     // the kernel log was saved
 }
 
-func waitForKdump(ctx context.Context, sys string, max, every time.Duration) {
-	if kdumpReady(sys) || !crashMemoryReserved(sys) {
-		return
-	}
-	deadline := time.NewTimer(max)
-	defer deadline.Stop()
-	tick := time.NewTicker(every)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-deadline.C:
-			return
-		case <-tick.C:
-			if kdumpReady(sys) {
-				return
-			}
+// KdumpAttempts returns kdump folders in dir modified at or after since
+// that hold no kernel log.
+func KdumpAttempts(dir string, since time.Time) []Attempt {
+	var out []Attempt
+	for _, a := range KdumpFolders(dir, since) {
+		if !a.HasLog {
+			out = append(out, a)
 		}
 	}
+	return out
 }
 
-// crashMemoryReserved reports whether the kernel set memory aside for a
-// crash kernel (the crashkernel= boot option).
-func crashMemoryReserved(sys string) bool {
-	b, err := os.ReadFile(filepath.Join(sys, "kernel/kexec_crash_size")) // #nosec G304 -- fixed sysfs path
-	s := strings.TrimSpace(string(b))
-	return err == nil && s != "" && s != "0"
+// KdumpFolders returns every kdump folder in dir modified at or after
+// since, oldest first. Only root-owned folders with kdump's names are
+// considered, because /var/crash is world-writable on Ubuntu. Listing them
+// needs no root.
+func KdumpFolders(dir string, since time.Time) []Attempt {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []Attempt
+	for _, e := range ents {
+		if !e.IsDir() || !kdumpStamp(e.Name()) {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		fi, err := os.Lstat(path)
+		if err != nil || !fi.IsDir() || fi.ModTime().Before(since) {
+			continue
+		}
+		if st, ok := fi.Sys().(*syscall.Stat_t); !ok || st.Uid != trustedUID {
+			continue
+		}
+		files, _ := os.ReadDir(path)
+		a := Attempt{Path: path, Time: fi.ModTime()}
+		for _, f := range files {
+			if isCrashLog(f.Name()) {
+				a.HasLog = true
+			}
+			a.Files = append(a.Files, f.Name())
+		}
+		out = append(out, a)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Time.Before(out[j].Time) })
+	return out
+}
+
+// kdumpStamp recognises kdump's folder names: kdump-tools' "202611081123"
+// and kexec-tools' "127.0.0.1-2026-11-08-11:23:41".
+func kdumpStamp(name string) bool {
+	digits := func(s string) bool {
+		for _, r := range s {
+			if r < '0' || r > '9' {
+				return false
+			}
+		}
+		return s != ""
+	}
+	if len(name) == 12 && digits(name) {
+		return true
+	}
+	host, date, ok := strings.Cut(name, "-")
+	return ok && host != "" && len(date) == len("2026-11-08-11:23:41") && digits(date[:4])
 }

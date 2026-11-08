@@ -118,16 +118,32 @@ button, or a virtual machine being powered off. A kernel crash looks exactly
 the same unless the kernel can save a crash log:
 
 ```sh
-beebox doctor          # see the "Kernel crash logs" line and its fix
+beebox doctor          # see the "Kernel crash logs" line
+sudo beebox setup      # switch it on (and anything else missing), then restart
 ```
 
-UEFI computers usually can after the one command `beebox doctor` shows. Computers
-and virtual machines that start in legacy BIOS mode have no firmware storage for
-crash logs, but kdump works there instead: `beebox doctor` shows the command for
-Debian, Ubuntu, Kali, Mint and Fedora. It reserves about 200 MB of memory for a
-spare kernel that saves the crashed kernel's log to `/var/crash` and restarts the
-computer. Restart once after running it, then check the doctor's line says
-**Saved if the kernel crashes (kdump, in /var/crash)**.
+UEFI computers keep crash logs in firmware once `beebox setup` has loaded the
+kernel's crash log store. Computers and virtual machines that start in legacy
+BIOS mode have no firmware storage for crash logs, so `beebox setup` sets up
+kdump instead (Debian, Ubuntu, Kali, Mint and Fedora): a spare kernel, given
+320–512 MB of memory depending on how much the computer has, saves the crashed
+kernel's log to `/var/crash` and restarts the computer. After the restart the
+doctor's line should say **Saved if the kernel crashes (kdump, in /var/crash)**,
+and still say so after the next restart.
+
+The doctor also tells you when kdump won't manage to save a crash, and
+`beebox setup` fixes it:
+
+- *On now, but off again after the next restart*: kdump was loaded by hand
+  (`kdump-config load`) but its service is off. Kali leaves newly installed
+  services switched off.
+- *kdump has too little memory to save a crash*: kdump-tools' own estimate of
+  what its spare kernel needs is more than is kept for it. Kali's kernels need
+  more than kdump-tools' default 192 MB. BeeBox writes its reservation to
+  `/etc/default/grub.d/zz-beebox-kdump.cfg`, which wins over kdump-tools' file.
+- *The last kernel crash was not saved*: kdump started after a crash but saved
+  no log. Reports for such a crash say **The kernel crashed (its crash log
+  couldn't be saved)** rather than blaming the power.
 
 Each kernel crash also leaves a memory dump next to the log in `/var/crash`, often
 a few hundred MB. BeeBox only reads the small `dmesg` file; delete old crash
@@ -189,7 +205,7 @@ The installer and the package repository are served by GitHub Pages from the
 - The address doesn't match the repository name exactly. Pages addresses are
   case-sensitive: a repository named `BeeBox` lives at `…github.io/BeeBox/`.
   Rename it to `beebox` (**Settings → General → Repository name**), then
-  republish: `gh workflow run release.yml -f tag=v0.3.0` (the latest tag).
+  republish: `gh workflow run release.yml -f tag=v0.4.0` (the latest tag).
 
 Check which address answers:
 

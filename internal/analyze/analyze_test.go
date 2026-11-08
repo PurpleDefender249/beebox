@@ -342,3 +342,61 @@ func TestKdumpLogNamesAKernelCrash(t *testing.T) {
 		t.Fatalf("evidence should come from kdump: %+v", r.Verdict.Evidence)
 	}
 }
+
+// The recording says whether the boot that ended could save a crash log;
+// that wins over what the computer can do at the time of the analysis.
+func TestCrashLogsFromTheRecording(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		env       bool
+		flags     uint32
+		wantPower bool
+	}{
+		{"kdump loaded then, off now", false, sample.FlagCrashProbe | sample.FlagCrashLog, true},
+		{"no crash log then, kdump now", true, sample.FlagCrashProbe, false},
+		{"old recording: use what is known now", true, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in, err := scenario.Build("power-loss", end)
+			if err != nil {
+				t.Fatal(err)
+			}
+			in.Env.CrashLogs = tc.env
+			for i := range in.Ring.Samples {
+				in.Ring.Samples[i].Flags |= tc.flags
+			}
+			r := analyze.Analyze(in)
+			if got := r.Verdict.ID == "power-loss"; got != tc.wantPower {
+				t.Fatalf("verdict %s (%q), want power-loss=%v", r.Verdict.ID, r.Verdict.Title, tc.wantPower)
+			}
+		})
+	}
+}
+
+// kdump started after the crash but saved no log (too little memory, a
+// kernel too new for makedumpfile, or switched off part-way): still a
+// kernel crash, not a power cut.
+func TestKdumpStartedButSavedNoLog(t *testing.T) {
+	in, err := scenario.Build("power-loss", end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Env.CrashLogs = true
+	in.KdumpAttempts = []pstore.Attempt{{Path: "/var/crash/202611081130", Time: end.Add(30 * time.Second), Files: []string{"dump-incomplete"}}}
+	r := analyze.Analyze(in)
+	if r == nil || r.Verdict.ID != "kernel-crash-unsaved" {
+		t.Fatalf("want kernel-crash-unsaved, got %+v", r.Verdict)
+	}
+	for _, o := range r.Others {
+		if o.ID == "power-loss" || o.ID == "sudden-stop" {
+			t.Fatalf("a kernel crash is not a power cut: %+v", r.Others)
+		}
+	}
+	hasDoctor := false
+	for _, a := range r.Verdict.Advice {
+		hasDoctor = hasDoctor || a.Command == "beebox doctor"
+	}
+	if !hasDoctor {
+		t.Fatal("advice should point to beebox doctor")
+	}
+}

@@ -4,6 +4,7 @@ package doctor
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,7 @@ import (
 	"github.com/PurpleDefender249/beebox/internal/analyze"
 	"github.com/PurpleDefender249/beebox/internal/journal"
 	"github.com/PurpleDefender249/beebox/internal/paths"
+	"github.com/PurpleDefender249/beebox/internal/pstore"
 	"github.com/PurpleDefender249/beebox/internal/ring"
 	"github.com/PurpleDefender249/beebox/internal/sample"
 )
@@ -119,7 +121,7 @@ func checkRecorder(r Recording) Check {
 		c.Status = Fail
 		c.Result = fmt.Sprintf("Not recording (last sample %s ago)", short(r.LastAge))
 		c.Why = "The recorder service has stopped."
-		c.Fix = "sudo systemctl enable --now beebox && systemctl status beebox"
+		c.Fix = "sudo systemctl enable --now beebox"
 	}
 	return c
 }
@@ -137,7 +139,8 @@ func checkJournal() Check {
 	c.Result = "Deleted at every restart (Storage=" + storage + ")"
 	c.Why = "Kernel messages from a crashed boot are lost. BeeBox keeps its own copy of the important ones, but full logs help with rarer problems."
 	if storage == "volatile" || storage == "none" {
-		c.Fix = "Set Storage=persistent in /etc/systemd/journald.conf, then: sudo systemctl restart systemd-journald"
+		// A drop-in wins over journald.conf without editing it.
+		c.Fix = "sudo mkdir -p /etc/systemd/journald.conf.d && printf '[Journal]\\nStorage=persistent\\n' | sudo tee /etc/systemd/journald.conf.d/90-beebox.conf >/dev/null && sudo systemctl restart systemd-journald"
 	} else {
 		c.Fix = "sudo mkdir -p /var/log/journal && sudo systemd-tmpfiles --create --prefix /var/log/journal && sudo systemctl restart systemd-journald"
 	}
@@ -154,7 +157,14 @@ func checkPSI() Check {
 	c.Status = Warn
 	c.Result = "Not enabled in this kernel"
 	c.Why = "It is BeeBox's most reliable signal that memory or the disk is choking the system."
-	c.Fix = "Add psi=1 to the kernel command line (for GRUB: edit GRUB_CMDLINE_LINUX in /etc/default/grub, update GRUB, reboot)"
+	switch {
+	case hasCmd("grubby"):
+		c.Fix = "sudo grubby --update-kernel=ALL --args=psi=1   # then restart"
+	case hasCmd("update-grub"):
+		c.Fix = `sudo sed -i 's/^GRUB_CMDLINE_LINUX="/&psi=1 /' /etc/default/grub && sudo update-grub   # then restart`
+	default:
+		c.Why += " To turn it on, add psi=1 to the kernel command line and restart."
+	}
 	return c
 }
 
@@ -221,8 +231,101 @@ func checkSysrq() Check {
 }
 
 func checkPstore() Check {
-	return pstoreCheck("/sys", lookPathSbin, analyze.DetectEnv("").PkgManager)
+	return pstoreCheck(crashEnv{
+		sys:       "/sys",
+		lookPath:  lookPathSbin,
+		enabled:   unitEnabled,
+		pm:        analyze.DetectEnv("").PkgManager,
+		suggested: kdumpSuggestedMB,
+		folders: func() []pstore.Attempt {
+			return pstore.KdumpFolders(pstore.KdumpDir, time.Time{})
+		},
+		handled: func() time.Time {
+			if fi, err := os.Stat(kdumpGrubFile); err == nil {
+				return fi.ModTime()
+			}
+			return time.Time{}
+		},
+	})
 }
+
+// crashEnv is what the kernel-crash-log check looks at (replaced in tests).
+type crashEnv struct {
+	sys       string                       // /sys
+	lookPath  func(string) (string, error) // finds commands
+	enabled   func(unit string) bool       // systemd unit enabled?
+	pm        string                       // apt, dnf, ...
+	suggested func() int                   // kdump's own memory estimate in MB, 0 if unknown
+	folders   func() []pstore.Attempt      // kdump's folders in /var/crash, oldest first
+	handled   func() time.Time             // when BeeBox last changed kdump's memory
+}
+
+// kdumpGrubFile is BeeBox's own boot-menu setting for kdump's memory. It
+// is read after kdump-tools.cfg and the kernel uses the last crashkernel=,
+// so it wins without editing kdump-tools' own file.
+const kdumpGrubFile = "/etc/default/grub.d/zz-beebox-kdump.cfg"
+
+// kdumpMemory is how much memory kdump keeps, by the computer's memory:
+// Ubuntu's sizes, which also suit Kali's large kernels, and kdump-tools'
+// own for small machines.
+const kdumpMemory = "512M-2G:192M,2G-4G:320M,4G-32G:512M,32G-:1G"
+
+// reserveKdump sets kdump's memory reservation in the boot menu.
+func reserveKdump(spec string) string {
+	return "sudo mkdir -p /etc/default/grub.d && echo 'GRUB_CMDLINE_LINUX_DEFAULT=\"$GRUB_CMDLINE_LINUX_DEFAULT crashkernel=" + spec + "\"' | sudo tee " + kdumpGrubFile + " >/dev/null && sudo update-grub"
+}
+
+// kdumpSuggestedMB asks kdump-tools how much memory its spare kernel needs
+// ("crashkernel suggested size: 204M" in "kdump-config show").
+func kdumpSuggestedMB() int {
+	path, err := lookPathSbin("kdump-config")
+	if err != nil {
+		return 0
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	out, _ := exec.CommandContext(ctx, path, "show").Output() // #nosec G204 -- fixed command
+	return parseSuggestedMB(string(out))
+}
+
+func parseSuggestedMB(out string) int {
+	for _, line := range strings.Split(out, "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "crashkernel suggested size:"); ok {
+			v = strings.TrimSuffix(strings.TrimSpace(v), "M")
+			if n, err := strconv.Atoi(v); err == nil {
+				return n
+			}
+		}
+	}
+	return 0
+}
+
+// roundUp64 rounds MB up to a multiple of 64.
+func roundUp64(mb int) int { return (mb + 63) / 64 * 64 }
+
+// unitEnabled reports whether a systemd unit is enabled, the way
+// "systemctl enable" records it: a link in a .wants directory of
+// /etc/systemd/system.
+func unitEnabled(unit string) bool {
+	m, _ := filepath.Glob(filepath.Join("/etc/systemd/system", "*.wants", unit))
+	return len(m) > 0
+}
+
+// kdumpService is the systemd unit that loads the crash kernel at every
+// start-up: kdump-tools.service on the Debian family, kdump.service on
+// Fedora. Kali switches newly installed services off, so it has to be
+// enabled explicitly, or kdump only works until the next restart.
+func kdumpService(has func(string) bool) string {
+	switch {
+	case has("kdump-config"):
+		return "kdump-tools"
+	case has("kdumpctl"):
+		return "kdump"
+	}
+	return ""
+}
+
+func hasCmd(name string) bool { _, err := lookPathSbin(name); return err == nil }
 
 // lookPathSbin finds administrator commands (update-grub, kdump-config)
 // even when the doctor runs as a normal user, whose PATH on Debian has no
@@ -246,8 +349,9 @@ const useKdump = "sudo sed -i 's/^USE_KDUMP=.*/USE_KDUMP=1/' /etc/default/kdump-
 // pstoreCheck reports whether a kernel crash leaves a log BeeBox can read:
 // pstore (UEFI variables, ramoops, ERST) or kdump, which also works on
 // computers that start in legacy BIOS mode.
-func pstoreCheck(sys string, lookPath func(string) (string, error), pm string) Check {
+func pstoreCheck(e crashEnv) Check {
 	c := Check{ID: "pstore", Name: "Kernel crash logs"}
+	sys, lookPath, enabled, pm := e.sys, e.lookPath, e.enabled, e.pm
 	read := func(rel string) string {
 		b, err := os.ReadFile(filepath.Join(sys, rel)) // #nosec G304 -- fixed sysfs paths
 		if err != nil {
@@ -261,7 +365,55 @@ func pstoreCheck(sys string, lookPath func(string) (string, error), pm string) C
 		c.Result = "Saved if the kernel crashes (backend: " + b + ")"
 		return c
 	}
+	svc := kdumpService(has)
 	if read("kernel/kexec_crash_loaded") == "1" {
+		if svc != "" && !enabled(svc+".service") {
+			c.Status = Warn
+			c.Result = "On now, but off again after the next restart"
+			c.Why = "kdump is loaded, but its service is switched off, so nothing loads it at start-up. A kernel crash after a restart would leave no trace, and BeeBox would report a sudden stop."
+			c.Fix = "sudo systemctl enable " + svc
+			return c
+		}
+		reservedMB := 0
+		if n, err := strconv.ParseInt(read("kernel/kexec_crash_size"), 10, 64); err == nil {
+			reservedMB = int(n >> 20)
+		}
+		canReserve := svc == "kdump-tools" && has("update-grub")
+		need := e.suggested()
+		if need == 0 && reservedMB > 0 && reservedMB < 256 {
+			// kdump-tools can't estimate before its first start-up after
+			// install. Current kernels (Kali's in particular) rarely start in
+			// less than 256 MB, so ask for kdumpMemory's sizes instead.
+			c.Status = Warn
+			c.Result = fmt.Sprintf("kdump may have too little memory to save a crash (%d MB kept)", reservedMB)
+			c.Why = "When the kernel crashes, kdump's spare kernel starts in the memory kept for it. Recent kernels usually need more than 256 MB; with too little, kdump fails before saving anything and the crash looks like a power cut."
+			if canReserve {
+				c.Fix = reserveKdump(kdumpMemory) + "   # then restart"
+			}
+			return c
+		}
+		if need > 0 && reservedMB > 0 && need > reservedMB {
+			c.Status = Warn
+			c.Result = fmt.Sprintf("kdump has too little memory to save a crash (%d MB kept, about %d MB needed)", reservedMB, need)
+			c.Why = "When the kernel crashes, kdump's spare kernel starts in the memory kept for it. With too little, it fails before saving anything, and the crash looks like a power cut."
+			if canReserve {
+				c.Fix = reserveKdump(fmt.Sprintf("512M-:%dM", roundUp64(need*5/4))) + "   # then restart"
+			}
+			return c
+		}
+		if fs := e.folders(); len(fs) > 0 {
+			// Only the latest crash counts: a later one that was saved
+			// shows kdump works now.
+			if last := fs[len(fs)-1]; !last.HasLog && last.Time.After(e.handled()) {
+				c.Status = Warn
+				c.Result = "The last kernel crash (" + last.Time.Local().Format("2 Jan 15:04") + ") was not saved"
+				c.Why = "kdump started after that crash but saved no kernel log. It usually needs more memory; it can also be too old for this kernel (install updates), or the computer was switched off before it finished (it restarts by itself when done)."
+				if canReserve && reservedMB > 0 {
+					c.Fix = reserveKdump(fmt.Sprintf("512M-:%dM", roundUp64(reservedMB+128))) + "   # then restart"
+				}
+				return c
+			}
+		}
 		c.Status = OK
 		c.Result = "Saved if the kernel crashes (kdump, in /var/crash)"
 		return c
@@ -273,29 +425,36 @@ func pstoreCheck(sys string, lookPath func(string) (string, error), pm string) C
 	case !uefi:
 		c.Why += " Legacy BIOS has no firmware storage for crash logs, but kdump works: it keeps about 200 MB of memory for a spare kernel that saves the crashed kernel's log to /var/crash, then restarts."
 		reserved := read("kernel/kexec_crash_size")
-		installed := has("kdump-config") || has("kdumpctl")
 		switch {
-		case installed && reserved != "" && reserved != "0":
+		case svc != "" && reserved != "" && reserved != "0":
 			c.Result = "kdump is set up but not switched on"
-			switch {
-			case has("kdump-config"):
-				c.Fix = useKdump + " && sudo kdump-config load"
-			case has("kdumpctl"):
-				c.Fix = "sudo systemctl enable --now kdump"
+			switch svc {
+			case "kdump-tools":
+				// restart, not start: a service that already ran with
+				// USE_KDUMP=0 counts as started and would do nothing.
+				c.Fix = useKdump + " && sudo systemctl enable kdump-tools && sudo systemctl restart kdump-tools"
+			default:
+				c.Fix = "sudo systemctl enable kdump && sudo systemctl restart kdump"
 			}
-		case installed:
+		case svc != "":
 			c.Result = "kdump is installed but has no memory reserved yet"
 			switch {
-			case has("kdump-config"):
-				c.Fix = useKdump + " && sudo update-grub   # then restart"
-			case has("kdumpctl"):
+			case svc == "kdump-tools" && has("update-grub"):
+				c.Fix = useKdump + " && sudo systemctl enable kdump-tools && " + reserveKdump(kdumpMemory) + "   # then restart"
+			case svc == "kdump-tools":
+				c.Fix = useKdump + " && sudo systemctl enable kdump-tools   # then restart"
+			default:
 				c.Fix = "sudo kdumpctl reset-crashkernel --kernel=ALL && sudo systemctl enable kdump   # then restart"
 			}
 		default:
 			c.Result = "Not set up: this computer starts in legacy BIOS mode, so it needs kdump"
 			switch pm {
 			case "apt":
-				c.Fix = "sudo env DEBIAN_FRONTEND=noninteractive apt install -y kdump-tools && " + useKdump + " && sudo update-grub   # then restart"
+				c.Fix = "sudo env DEBIAN_FRONTEND=noninteractive apt install -y kdump-tools && " + useKdump + " && sudo systemctl enable kdump-tools"
+				if has("update-grub") {
+					c.Fix += " && " + reserveKdump(kdumpMemory)
+				}
+				c.Fix += "   # then restart"
 			case "dnf":
 				c.Fix = "sudo dnf install -y kexec-tools && sudo kdumpctl reset-crashkernel --kernel=ALL && sudo systemctl enable kdump   # then restart"
 			default:
@@ -332,7 +491,7 @@ func checkNotify() Check {
 		c.Result = "notify-send is not installed"
 		c.Why = "Without it, BeeBox can't pop up a message after a crash; run 'beebox last' instead."
 		env := analyze.DetectEnv("")
-		c.Fix = env.Install(env.NotifyPackage())
+		c.Fix = env.InstallYes(env.NotifyPackage())
 	default:
 		c.Status = Info
 		c.Result = "Login notification is not installed"

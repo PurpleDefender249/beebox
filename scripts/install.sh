@@ -12,7 +12,8 @@
 #   --uninstall   remove BeeBox and its repository (keeps recordings/reports)
 #   --purge       with --uninstall, also delete recordings and reports
 #   --no-start    install, but don't start recording now
-#   --yes         don't ask for confirmation
+#   --no-setup    don't run 'beebox setup' afterwards
+#   --yes         don't ask for confirmation (also applies 'beebox setup')
 #   --help        show this help
 #
 # Everything this script does is printed before it happens. To read it
@@ -56,7 +57,8 @@ Options:
   --uninstall   remove BeeBox and its repository (keeps recordings/reports)
   --purge       with --uninstall, also delete recordings and reports
   --no-start    install, but don't start recording now
-  --yes         don't ask for confirmation
+  --no-setup    don't run 'beebox setup' afterwards
+  --yes         don't ask for confirmation (also applies 'beebox setup')
   --help        show this help
 EOF
 }
@@ -194,12 +196,13 @@ uninstall() {
 }
 
 main() {
-    action=install assume_yes=no purge=no no_start=no
+    action=install assume_yes=no purge=no no_start=no setup=yes
     for arg in "$@"; do
         case $arg in
             --uninstall) action=uninstall ;;
             --purge) purge=yes ;;
-            --no-start) no_start=yes ;;
+            --no-start) no_start=yes; setup=no ;;
+            --no-setup) setup=no ;;
             --yes|-y) assume_yes=yes ;;
             --help|-h) usage; exit 0 ;;
             *) die "unknown option: $arg (try --help)" ;;
@@ -218,6 +221,10 @@ main() {
         dnf) say "This adds the signed BeeBox repository ($REPO_URL/rpm) and installs the package." ;;
         pacman) say "This downloads the latest release from $RELEASES_URL, checks it and installs it." ;;
     esac
+    if [ "$setup" = yes ]; then
+        say "Then 'beebox setup' switches on what BeeBox needs to catch crashes (memory"
+        say "protection, kernel crash logs, ...). It shows every change and asks first."
+    fi
     confirm "Continue?"
     "install_$family"
     if [ "$no_start" = yes ] && [ -d /run/systemd/system ]; then
@@ -225,15 +232,25 @@ main() {
     fi
 
     step "Checking"
-    if command -v beebox >/dev/null 2>&1; then
-        beebox status || true
-        say ""
-        say "Next:  ${B}beebox doctor${N}          make sure nothing is missing to catch the next crash"
-        say "       ${B}beebox view --sample${N}   see what a report looks like"
-        say "Remove later with: curl -fsSL $REPO_URL/install.sh | sh -s -- --uninstall"
-    else
-        die "the installation didn't finish; see the messages above"
+    command -v beebox >/dev/null 2>&1 || die "the installation didn't finish; see the messages above"
+    beebox status || true
+
+    if [ "$setup" = yes ]; then
+        step "Setting up"
+        if [ "$assume_yes" = yes ]; then
+            run beebox setup --yes --no-banner || true
+        elif [ -r /dev/tty ]; then
+            # setup shows its plan and asks on the terminal (stdin is this script).
+            run beebox setup --no-banner </dev/tty || true
+        else
+            say "No terminal to ask on. To finish, run: ${B}sudo beebox setup${N}"
+        fi
     fi
+
+    say ""
+    say "Next:  ${B}beebox doctor${N}          check nothing is missing to catch the next crash"
+    say "       ${B}beebox view --sample${N}   see what a report looks like"
+    say "Remove later with: curl -fsSL $REPO_URL/install.sh | sh -s -- --uninstall"
 }
 
 main "$@"

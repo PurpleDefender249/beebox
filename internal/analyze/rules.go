@@ -39,6 +39,7 @@ type rule func(*ruleCtx) *report.Finding
 
 var rules = []rule{
 	rulePanic,
+	ruleKdumpUnsaved,
 	ruleHardwareError,
 	ruleOOM,
 	ruleGPU,
@@ -662,8 +663,8 @@ func ruleFreeze(c *ruleCtx) *report.Finding {
 }
 
 func rulePowerLoss(c *ruleCtx) *report.Finding {
-	if c.in.Clean {
-		return nil
+	if c.in.Clean || len(c.in.KdumpAttempts) > 0 {
+		return nil // kdump started, so the kernel crashed
 	}
 	m := c.m
 	// Any serious log line near the end means something other than a
@@ -771,6 +772,37 @@ func ruleSysrq(c *ruleCtx) *report.Finding {
 		Title:    "You restarted with the Magic SysRq keys",
 		Summary:  "That's the safest way out of a frozen system: it saves data to disk before restarting. The main finding explains what froze it.",
 		Evidence: evidence(ls, 4),
+	}
+}
+
+// ruleKdumpUnsaved: kdump only starts when the kernel crashes, so a kdump
+// folder from after this boot proves a kernel crash even when the spare
+// kernel saved no log to say why.
+func ruleKdumpUnsaved(c *ruleCtx) *report.Finding {
+	if len(c.in.KdumpAttempts) == 0 || c.in.Clean {
+		return nil
+	}
+	for _, l := range c.lines {
+		if (l.Source == "kdump" || l.Source == "pstore") && (rePanic.MatchString(l.Text) || reSysrqC.MatchString(l.Text)) {
+			return nil // a saved log explains it; rulePanic reports that
+		}
+	}
+	a := c.in.KdumpAttempts[len(c.in.KdumpAttempts)-1]
+	saved := "nothing"
+	if len(a.Files) > 0 {
+		saved = strings.Join(a.Files, ", ")
+	}
+	return &report.Finding{
+		ID: "kernel-crash-unsaved", Kind: report.KindCause, Confidence: 85,
+		Title: "The kernel crashed (its crash log couldn't be saved)",
+		Summary: "kdump, the spare kernel that takes over when the kernel crashes, started at " + a.Time.Local().Format("15:04") +
+			", so the kernel did crash. But it saved no kernel log, so BeeBox can't say why. kdump usually fails like this when it has too little memory reserved, when it is too old for this kernel, or when the computer is switched off while it is still saving (it restarts the computer by itself when it has finished).",
+		Advice: []report.Advice{
+			adv("Check kdump has enough memory and is up to date; the doctor shows the command if not.", "beebox doctor"),
+			adv("Install pending updates: newer kdump tools and kernels fix crashes like this.", c.in.Env.update()),
+			adv("Next time, give kdump a few minutes to finish: it restarts the computer by itself.", ""),
+		},
+		Evidence: []report.Line{{Time: a.Time, Source: "kdump", Text: "kdump started saving in " + a.Path + " and saved " + saved + " (no kernel log)"}},
 	}
 }
 

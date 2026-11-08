@@ -17,6 +17,7 @@ recorded sample or journal entry, whichever is later.
 | Verdict (ID) | Main signals | Typical confidence |
 | --- | --- | --- |
 | Out of memory (`out-of-memory`) | Memory pressure "full" in the final minute (≥40% strong, ≥10% moderate), available memory under 3% or 8%, swap over 90% full, the recorder running late, kernel OOM kills or systemd-oomd/earlyoom kills in the last 5 minutes | 30–95 |
+| Kernel crash, log not saved (`kernel-crash-unsaved`) | A kdump folder in `/var/crash` from after the boot with no kernel log in it: kdump only starts when the kernel crashes, but it ran out of memory, couldn't read the log or was switched off part-way | 85 |
 | Kernel panic (`kernel-panic`) | `Kernel panic - not syncing` in the crashed kernel's own log, from pstore or kdump (95), or the system log (85); the faulting function (`RIP:`/`pc :`) and program (`Comm:`) are named | 85–95 |
 | Deliberate crash (`kernel-panic`) | `sysrq: Trigger a crash` near the end | 97 |
 | Kernel lockup (`kernel-lockup`) | Soft/hard lockup or RCU stall messages, stronger within 10 minutes of the end | 50–78 |

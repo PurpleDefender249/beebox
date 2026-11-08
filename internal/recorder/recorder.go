@@ -267,6 +267,12 @@ func loop(ctx context.Context, cfg config.Config, w *ring.Writer, col *sample.Co
 	fl := startFlusher(flushCtx, w, cfg.Flush, log)
 	defer func() { stopFlush(); fl.stop() }()
 
+	// Whether a kernel crash would leave a log is recorded with every
+	// sample, so the report about this boot knows, even if kdump is loaded
+	// by hand or switched off before the next start-up. Two sysfs reads,
+	// refreshed every 10 seconds.
+	crashLogs, crashChecked := false, time.Time{}
+
 	timer := time.NewTimer(interval)
 	defer timer.Stop()
 	next := time.Now().Add(interval)
@@ -297,6 +303,13 @@ func loop(ctx context.Context, cfg config.Config, w *ring.Writer, col *sample.Co
 		if first {
 			s.Flags |= sample.FlagStart
 			first = false
+		}
+		if time.Since(crashChecked) >= 10*time.Second {
+			crashLogs, crashChecked = pstore.Available(), time.Now()
+		}
+		s.Flags |= sample.FlagCrashProbe
+		if crashLogs {
+			s.Flags |= sample.FlagCrashLog
 		}
 		if err := w.Append(s); err != nil {
 			failures++
@@ -345,9 +358,6 @@ func analysePrevious(ctx context.Context, opt Options, prev previousBoot, log *s
 	defer os.Remove(marker)
 
 	start := time.Now()
-	// kdump's service loads its crash kernel during start-up, possibly
-	// after BeeBox: wait for it so the report knows crash logs are on.
-	pstore.WaitForKdump(ctx, time.Minute)
 	in, err := analyze.Gather(ctx, analyze.GatherOptions{
 		RingPath:   prev.ringPath,
 		Previous:   true,

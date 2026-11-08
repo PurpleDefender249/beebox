@@ -30,6 +30,7 @@ func init() {
 		},
 		run: func(ctx context.Context, a *App, args []string) error { return a.doctor(drJSON, drStrict) },
 	})
+	registerSetup()
 
 	var recConfig string
 	register(&command{
@@ -122,6 +123,12 @@ func (a *App) doctor(asJSON, strict bool) error {
 			}
 		}
 		fmt.Fprintln(w)
+		optional := 0
+		for _, c := range checks {
+			if c.Status == doctor.Info && c.Fix != "" {
+				optional++
+			}
+		}
 		switch problems {
 		case 0:
 			fmt.Fprintln(w, st.Green("✓")+" Everything BeeBox needs is in place.")
@@ -129,6 +136,9 @@ func (a *App) doctor(asJSON, strict bool) error {
 			fmt.Fprintln(w, st.Yellow("!")+" 1 thing to fix. The command to run is shown above.")
 		default:
 			fmt.Fprintf(w, "%s %d things to fix. The commands to run are shown above.\n", st.Yellow("!"), problems)
+		}
+		if problems+optional > 0 {
+			fmt.Fprintf(w, "  Or let BeeBox make the changes for you: %s\n", st.Cyan("sudo beebox setup"))
 		}
 	}
 	if strict && problems > 0 {

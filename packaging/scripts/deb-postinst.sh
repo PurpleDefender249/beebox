@@ -48,6 +48,7 @@ if [ "$1" = configure ] && [ -z "$2" ]; then
         echo "Start recording with:  sudo systemctl enable --now beebox"
     fi
     echo
+    echo "  sudo beebox setup      switch on what BeeBox needs to catch crashes"
     echo "  beebox status          check it's recording"
     echo "  beebox doctor          make sure nothing is missing to catch the next crash"
     echo "  beebox view --sample   see what a report looks like"

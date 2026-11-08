@@ -112,6 +112,23 @@ func detectOOMProtector(procDir string) string {
 // Install returns a package install command for this distribution.
 func (e Env) Install(pkg string) string { return e.install(pkg) }
 
+// InstallYes is Install without questions, for commands "beebox setup"
+// runs for the user.
+func (e Env) InstallYes(pkg string) string {
+	switch e.PkgManager {
+	case "apt":
+		return "sudo env DEBIAN_FRONTEND=noninteractive apt install -y " + pkg
+	case "dnf":
+		return "sudo dnf install -y " + pkg
+	case "pacman":
+		return "sudo pacman -S --needed --noconfirm " + pkg
+	case "zypper":
+		return "sudo zypper install -y " + pkg
+	default:
+		return ""
+	}
+}
+
 // ZramCommand returns a command that sets up compressed swap in RAM.
 func (e Env) ZramCommand() string {
 	switch e.PkgManager {
@@ -119,11 +136,11 @@ func (e Env) ZramCommand() string {
 		// Enable explicitly: Kali leaves newly installed services switched off.
 		return "sudo apt install -y zram-tools && sudo systemctl enable --now zramswap"
 	case "dnf":
-		return "sudo dnf install zram-generator-defaults && sudo systemctl restart systemd-zram-setup@zram0"
+		return "sudo dnf install -y zram-generator-defaults && sudo systemctl restart systemd-zram-setup@zram0"
 	case "pacman":
-		return "sudo pacman -S zram-generator && printf '[zram0]\\n' | sudo tee /etc/systemd/zram-generator.conf && sudo systemctl daemon-reload && sudo systemctl start systemd-zram-setup@zram0"
+		return "sudo pacman -S --needed --noconfirm zram-generator && printf '[zram0]\\n' | sudo tee /etc/systemd/zram-generator.conf && sudo systemctl daemon-reload && sudo systemctl start systemd-zram-setup@zram0"
 	case "zypper":
-		return "sudo zypper install systemd-zram-service && sudo zramswapon"
+		return "sudo zypper install -y systemd-zram-service && sudo zramswapon"
 	default:
 		return ""
 	}

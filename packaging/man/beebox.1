@@ -52,6 +52,20 @@ keeps updating.
 Check that the system is set up to catch the next crash and print the exact
 command to fix anything that is missing. It changes nothing by itself.
 .TP
+.B setup
+Make the changes
+.B doctor
+recommends: out-of-memory protection, kernel crash logs (kdump on computers
+that start in legacy BIOS mode, the UEFI crash log store otherwise), logs kept
+across restarts, safe SysRq restarts, compressed swap and desktop
+notifications. Every command is shown first and nothing runs until you agree;
+.B \-\-yes
+skips the question,
+.B \-\-dry\-run
+only shows the plan and
+.BI \-\-skip " ids"
+leaves checks alone. Needs root. Says which changes need a restart.
+.TP
 .B analyze
 Analyse a previous boot on demand, from the recording if one exists and from
 the journal. Also works for crashes from before

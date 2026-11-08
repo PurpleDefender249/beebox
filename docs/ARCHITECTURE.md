@@ -99,6 +99,11 @@ it to `/var/lib/beebox/boots/` and, after a few seconds, gathers evidence:
    with a single link are read, and only their last 256 KB (`/var/crash` is
    world-writable on Ubuntu, so a planted file or link is ignored).
 
+Whether the kernel could save a crash log (a pstore backend or a loaded
+kdump kernel) is checked every 10 seconds and stored as a flag on every
+sample, so the analysis knows what the boot that ended could do, not what
+the new boot can.
+
 Sources are merged into one timeline, de-duplicated (the same kernel line
 arrives from both the ring and the journal) and passed to a list of
 independent rules (see [DETECTIONS.md](DETECTIONS.md)). Each rule returns a

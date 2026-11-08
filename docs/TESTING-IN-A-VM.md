@@ -29,17 +29,26 @@ virt-manager, Hyper-V).
 
    Once a release is published you can use the one-line installer instead:
    `curl -fsSL https://purpledefender249.github.io/beebox/install.sh | sh`.
-4. Restart the VM once, log in, and check:
+4. Let BeeBox switch on what it needs (the one-line installer already
+   offers this). It shows every change and asks first; on a legacy-BIOS VM it
+   sets up kdump for kernel crash logs:
+
+   ```sh
+   sudo beebox setup
+   ```
+
+5. Restart the VM once, log in, and check:
 
    ```sh
    beebox status
    beebox doctor
    ```
 
-   `beebox status` should say **BeeBox is recording**. Note what
-   `beebox doctor` says on the **Kernel crash logs** line; it decides what
-   sections 2 and 4 will report.
-5. Wait two minutes before the first test, and run **one test per boot**.
+   `beebox status` should say **BeeBox is recording**, and `beebox doctor`
+   should end with **Everything BeeBox needs is in place**. If a line still
+   shows a command, run `sudo beebox setup` again and restart. The
+   **Kernel crash logs** line decides what sections 2 and 4 will report.
+6. Wait two minutes before the first test, and run **one test per boot**.
    After each test, power the VM on, log in, wait for the notification, then
    record the result:
 
@@ -65,11 +74,15 @@ virt-manager, Hyper-V).
 
 ## 3. Test running out of memory
 
-1. Stop the memory protector so the system really runs out:
+1. Stop the memory protector so the system really runs out. `beebox setup`
+   switched on systemd-oomd precisely so that this *doesn't* freeze a
+   computer, so it has to be stopped for the test (it starts again at the next
+   boot):
 
    ```sh
    sudo systemctl stop systemd-oomd 2>/dev/null; sudo systemctl stop earlyoom 2>/dev/null
-   sudo apt install stress-ng        # or: sudo dnf install stress-ng
+   systemctl is-active systemd-oomd earlyoom     # both must say "inactive"
+   sudo apt install stress-ng                    # or: sudo dnf install stress-ng
    ```
 
 2. Start eating memory (this makes the VM extremely slow):
@@ -83,6 +96,15 @@ virt-manager, Hyper-V).
 4. Start it again. Expected verdict: **Your computer ran out of memory**,
    naming `stress-ng` as the biggest user.
 
+The VM doesn't always freeze. stress-ng marks its own workers as the kernel's
+first choice when memory runs out and starts new ones when they are closed,
+and with a fast virtual disk the kernel can keep up, so the VM stays usable:
+Linux is protecting itself, which is what you want on a real computer. If the
+VM still responds after five minutes, look at `beebox now`: if *memory free*
+never got near 0%, memory never ran out (the report will say so too). Cut the
+power anyway; the verdict is then **The power was cut**, with what happened to
+memory and the processor in the report.
+
 If you get a different verdict, run `sudo beebox dump > dump.txt` and attach
 the file to an issue. It shows the last two minutes the recorder saved, which
 tells us whether it kept up during the memory storm.
@@ -93,35 +115,30 @@ A kernel crash stops the computer instantly: nothing can be written to disk
 afterwards, not by BeeBox, not by the system journal. The only record that
 survives is the kernel's own crash log, saved either in UEFI firmware storage
 (pstore) or by kdump, a spare kernel that takes over, saves the log to
-`/var/crash` and restarts the computer. So this test needs `beebox doctor` to
-show **Kernel crash logs: Saved if the kernel crashes**.
-
-On a **legacy BIOS** VM, set up kdump first: run the command `beebox doctor`
-shows on the *Kernel crash logs* line (on Debian, Ubuntu and Kali it installs
-`kdump-tools`, switches it on and adds a memory reservation to the boot
-menu), restart, then check:
-
-```sh
-beebox doctor               # Kernel crash logs: Saved if the kernel crashes (kdump, in /var/crash)
-sudo kdump-config show      # Debian family: "current state: ready to kdump"
-```
-
-If `kdump-config show` says the reservation is too small, raise the number at
-the end of `crashkernel=` in `/etc/default/grub.d/kdump-tools.cfg` (for
-example to 256M), run `sudo update-grub` and restart. Without a working crash
-log, skip this test: BeeBox will report a sudden stop, which is the honest
-answer.
+`/var/crash` and restarts the computer. `sudo beebox setup` (section 1) sets
+up whichever this VM can use. Before this test, `beebox doctor` must show
+**Kernel crash logs: Saved if the kernel crashes**; if it shows anything
+else, run `sudo beebox setup` again and restart.
 
 ```sh
 echo 1 | sudo tee /proc/sys/kernel/sysrq
 echo c | sudo tee /proc/sysrq-trigger
 ```
 
-With kdump, the screen fills with kernel messages for a minute while the
-spare kernel saves the log, then the VM restarts by itself: don't power it
-off during that. With UEFI crash logs the VM restarts or freezes; if it
-freezes, cut the power as in section 2, then start it. Expected verdict:
+With kdump the VM restarts by itself once the spare kernel has saved the log.
+That takes from under a minute to a few minutes, and the screen may stay
+frozen or black meanwhile (Kali's boot menu hides kernel messages): **wait
+five minutes before you cut the power**. With UEFI crash logs the VM
+restarts or freezes; if it freezes, cut the power as in section 2, then start
+it. Expected verdict:
 **A crash was triggered on purpose (SysRq + C)**.
+
+If the verdict is **The kernel crashed (its crash log couldn't be saved)**,
+kdump started but didn't finish: usually too little memory for its spare
+kernel, or the power was cut too soon. Run `beebox doctor`, then
+`sudo beebox setup` if it shows a fix (it gives kdump more memory), restart
+and try again. If the verdict is **The power was cut**, kdump didn't start at
+all: check `beebox doctor` the same way.
 
 ## 5. Check the details
 

@@ -51,7 +51,7 @@ run_in() { # image, preparation command
         "$image" sh -euc "
             $ca_setup
             $prep
-            curl -fsSL $url/install.sh | sh -s -- --yes
+            curl -fsSL $url/install.sh | sh -s -- --yes --no-setup
             beebox version
             curl -fsSL $url/install.sh | sh -s -- --uninstall --purge --yes
             if [ -e /usr/bin/beebox ]; then echo 'still installed' >&2; exit 1; fi

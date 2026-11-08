@@ -10,6 +10,11 @@ const (
 	FlagStop                      // written during a clean, orderly stop
 	FlagResume                    // the system was asleep since the previous sample
 	FlagLate                      // the sample was taken much later than scheduled
+	// FlagCrashProbe means the recorder checked whether the kernel can
+	// save a crash log (pstore or a loaded kdump kernel), and FlagCrashLog
+	// that it could. Recordings from before 0.3.1 have neither.
+	FlagCrashProbe
+	FlagCrashLog
 )
 
 // Sample is one snapshot. JSON keys are short because every sample has to

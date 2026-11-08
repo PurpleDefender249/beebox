@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/PurpleDefender249/beebox/internal/journal"
@@ -103,7 +104,23 @@ func Gather(ctx context.Context, opt GatherOptions) (Input, error) {
 		}
 		if !since.IsZero() {
 			in.Pstore = pstore.Find(opt.PstoreDirs, since)
+			for _, d := range opt.PstoreDirs {
+				if filepath.Clean(d) == pstore.KdumpDir {
+					in.KdumpAttempts = pstore.KdumpAttempts(d, since)
+				}
+			}
 		}
 	}
 	return in, nil
+}
+
+// crashLogsDuring reports whether the kernel could save a crash log at the
+// end of a recording, from the recorder's own check (0.3.1 and later).
+func crashLogsDuring(ss []sample.Sample) (bool, bool) {
+	for i := len(ss) - 1; i >= 0; i-- {
+		if ss[i].Flags&sample.FlagCrashProbe != 0 {
+			return ss[i].Flags&sample.FlagCrashLog != 0, true
+		}
+	}
+	return false, false
 }

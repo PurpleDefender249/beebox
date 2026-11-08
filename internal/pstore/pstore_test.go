@@ -1,7 +1,6 @@
 package pstore
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,44 +119,40 @@ func TestKdumpReady(t *testing.T) {
 	}
 }
 
-func TestWaitForKdump(t *testing.T) {
-	sys := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(sys, "kernel"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	set := func(name, v string) {
-		if err := os.WriteFile(filepath.Join(sys, "kernel", name), []byte(v), 0o644); err != nil {
+func TestKdumpAttempts(t *testing.T) {
+	old := trustedUID
+	trustedUID = uint32(os.Getuid()) // #nosec G115 -- test only
+	t.Cleanup(func() { trustedUID = old })
+
+	since := time.Now().Add(-time.Hour)
+	crash := t.TempDir()
+	mk := func(name string, files ...string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(crash, name), 0o755); err != nil {
 			t.Fatal(err)
 		}
+		for _, f := range files {
+			write(t, filepath.Join(crash, name, f), "x", time.Now())
+		}
 	}
-	ctx := context.Background()
-
-	// Not set up: no waiting.
-	set("kexec_crash_size", "0\n")
-	set("kexec_crash_loaded", "0\n")
-	start := time.Now()
-	waitForKdump(ctx, sys, time.Minute, 10*time.Millisecond)
-	if time.Since(start) > time.Second {
-		t.Fatal("waited although kdump isn't set up")
-	}
-
-	// Memory reserved, service still starting: wait until it is loaded.
-	set("kexec_crash_size", "201326592\n")
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		_ = os.WriteFile(filepath.Join(sys, "kernel/kexec_crash_loaded"), []byte("1\n"), 0o644) // #nosec G306 -- test file
-	}()
-	start = time.Now()
-	waitForKdump(ctx, sys, time.Minute, 10*time.Millisecond)
-	if d := time.Since(start); d < 90*time.Millisecond || d > 5*time.Second || !kdumpReady(sys) {
-		t.Fatalf("should wait for the crash kernel to load (took %s)", d)
+	mk("202611081123", "dmesg.202611081123", "dump.202611081123") // saved fine
+	mk("202611081130", "dump-incomplete")                         // stopped part-way
+	mk("127.0.0.1-2026-11-08-11:40:02")                           // Fedora, nothing saved
+	mk("not-a-kdump-folder")
+	old2 := filepath.Join(crash, "202611071000")
+	mk("202611071000")
+	if err := os.Chtimes(old2, since.Add(-time.Hour), since.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
 	}
 
-	// Never loaded: give up after max.
-	set("kexec_crash_loaded", "0\n")
-	start = time.Now()
-	waitForKdump(ctx, sys, 50*time.Millisecond, 10*time.Millisecond)
-	if d := time.Since(start); d > 2*time.Second {
-		t.Fatalf("should give up after max (took %s)", d)
+	got := KdumpAttempts(crash, since)
+	if len(got) != 2 {
+		t.Fatalf("want 2 unsaved crashes, got %+v", got)
+	}
+	names := []string{filepath.Base(got[0].Path), filepath.Base(got[1].Path)}
+	for _, want := range []string{"202611081130", "127.0.0.1-2026-11-08-11:40:02"} {
+		if names[0] != want && names[1] != want {
+			t.Fatalf("missing %s in %v", want, names)
+		}
 	}
 }

@@ -120,6 +120,11 @@ func TestCrashOnPreviousBootIsAnalysed(t *testing.T) {
 	if last := c.Samples[len(c.Samples)-1]; last.Flags&sample.FlagStop == 0 {
 		t.Fatal("final sample should carry the stop flag")
 	}
+	for _, s := range c.Samples[:len(c.Samples)-1] {
+		if s.Flags&sample.FlagCrashProbe == 0 {
+			t.Fatal("every sample should say whether a kernel crash log could be saved")
+		}
+	}
 	if _, err := os.Stat(p.AnalyzingMarker()); !os.IsNotExist(err) {
 		t.Fatal("analysis marker should be removed")
 	}

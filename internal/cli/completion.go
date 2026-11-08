@@ -40,6 +40,7 @@ var completionFlags = map[string][]string{
 	"status":     {"--json"},
 	"now":        {"--watch", "--json"},
 	"doctor":     {"--json", "--strict"},
+	"setup":      {"--yes", "--dry-run", "--skip"},
 	"record":     {"--config"},
 	"notify":     {"--wait", "--test"},
 	"version":    {"--verbose", "--json"},

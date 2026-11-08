@@ -4,6 +4,58 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-08
+
+### Added
+
+- `sudo beebox setup` makes every change `beebox doctor` recommends, so
+  nothing has to be configured by hand: out-of-memory protection, kernel crash
+  logs (kdump on legacy-BIOS computers, the UEFI crash log store otherwise),
+  logs kept across restarts, safe SysRq restarts, compressed swap and desktop
+  notifications. It shows each command, asks once (`--yes` to skip,
+  `--dry-run` to only look, `--skip` to leave checks alone), checks again
+  afterwards and says which changes need a restart.
+- The one-line installer runs `beebox setup` after installing (`--no-setup`
+  to skip; with `--yes` it applies it without asking).
+- A new verdict, **The kernel crashed (its crash log couldn't be saved)**:
+  kdump only starts when the kernel crashes, so a kdump folder with no log in
+  it proves a kernel crash even when the log is missing. These crashes were
+  reported as power cuts.
+- `beebox doctor` says when kdump would fail to save a crash: kdump-tools'
+  own memory estimate is above what is kept for it, the reservation is under
+  256 MB with no estimate yet, or the last crash wasn't saved. Its fix (and
+  `beebox setup`) sets the reservation in BeeBox's own boot-menu file.
+
+### Changed
+
+- kdump is set up with 320 MB of memory on computers with 2–4 GB and 512 MB
+  above that (kdump-tools' 192 MB is too little for Kali's kernels).
+- Every `beebox doctor` fix is now a command that can run unattended
+  (persistent logs and PSI included), and the doctor points to
+  `sudo beebox setup`.
+- docs/TESTING-IN-A-VM.md: set up with `beebox setup`; wait five minutes for
+  kdump; why the memory test doesn't always freeze a VM.
+
+## [0.3.1] - 2026-11-08
+
+### Fixed
+
+- Kali: kdump stopped working after every restart. Kali leaves newly
+  installed services switched off, so `kdump-tools.service` never loaded the
+  crash kernel at start-up, and the command `beebox doctor` showed
+  (`kdump-config load`) only lasted until the next restart. The doctor's
+  commands now enable the service (`systemctl enable kdump-tools`, or
+  `kdump` on Fedora), and it warns when kdump is loaded but would be off
+  after the next restart.
+- Whether the kernel could save a crash log is now recorded with every
+  sample, so a report describes the boot that ended rather than the state
+  after the restart. A power cut while kdump was loaded is reported as
+  "The power was cut" even if kdump is off after the restart, and the
+  recorder no longer waits for kdump before analysing the previous boot.
+
+Tested on a legacy-BIOS Debian 13 virtual machine with `kdump-tools.service`
+switched off the way Kali leaves it.
+
 ## [0.3.0] - 2026-11-08
 
 ### Added
@@ -123,6 +175,8 @@ First release.
 - The BeeBox logo: a bee with a striped recorder-box body in a honeycomb
   cell, with a simplified version for 16–32 px and PNGs for icon themes.
 
+[0.4.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.4.0
+[0.3.1]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.3.1
 [0.3.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.3.0
 [0.2.0]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.2.0
 [0.1.1]: https://github.com/PurpleDefender249/beebox/releases/tag/v0.1.1

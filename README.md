@@ -138,7 +138,10 @@ curl -fsSL https://purpledefender249.github.io/beebox/install.sh | sh
 
 On Debian-family systems and Fedora this adds the signed BeeBox package repository,
 so updates arrive with your normal system updates. On Arch it installs the latest
-release after checking its signed checksums.
+release after checking its signed checksums. Then it runs `beebox setup`, which
+switches on everything BeeBox needs to explain a crash — out-of-memory protection,
+kernel crash logs (kdump on legacy-BIOS computers), logs kept across restarts and
+more — showing every change and asking first. Nothing to configure by hand.
 
 > [!TIP]
 > The script prints every command before running it. To read it first, download it
@@ -192,9 +195,11 @@ sudo systemctl enable --now beebox
 </details>
 
 On Debian, Ubuntu, Kali, Mint and Fedora, BeeBox starts recording straight away.
-Then check everything is in place:
+If you installed a package by hand, let BeeBox switch on what it needs, restart if
+it says so, then check:
 
 ```sh
+sudo beebox setup
 beebox doctor
 ```
 
@@ -209,7 +214,8 @@ Something not working? See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 | `beebox view` | Open the latest report in your browser (or the "BeeBox" app in your menu) |
 | `beebox list` | Every report, newest first |
 | `beebox now --watch` | Live view of memory, stalls, temperatures and battery |
-| `beebox doctor` | Checks logs, memory protection, swap and crash logs, with the command to fix each |
+| `beebox doctor` | Checks logs, memory protection, swap and crash logs, and says what's wrong and how to fix it |
+| `sudo beebox setup` | Makes the changes the doctor recommends, for you (shows them and asks first) |
 | `sudo beebox analyze` | Analyse the previous boot on demand — also works for crashes from before BeeBox was installed |
 | `beebox view --sample` | See what a report looks like without anything going wrong |
 

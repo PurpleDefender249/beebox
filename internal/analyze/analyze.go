@@ -26,6 +26,9 @@ type Input struct {
 	KernelLog []journal.Entry
 	Warnings  []journal.Entry
 	Pstore    []pstore.Record
+	// KdumpAttempts are kdump saves after this boot that left no kernel
+	// log: proof the kernel crashed, without the reason.
+	KdumpAttempts []pstore.Attempt
 
 	Env       Env
 	Generator string
@@ -53,6 +56,14 @@ const minVerdict = 30
 func Analyze(in Input) *report.Report {
 	if in.Now.IsZero() {
 		in.Now = time.Now()
+	}
+	// Whether the boot that ended could save a crash log matters, not
+	// whether this one can: kdump may have been loaded by hand, or set up
+	// or switched off since.
+	if in.Ring != nil {
+		if v, ok := crashLogsDuring(in.Ring.Samples); ok {
+			in.Env.CrashLogs = v
+		}
 	}
 	lines := collectLines(&in)
 	m := measure(in.Ring)
