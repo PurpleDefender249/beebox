@@ -1,0 +1,23 @@
+Package: beebox
+Architecture: arm64
+Version: 0.4.0
+Priority: optional
+Section: admin
+Maintainer: PurpleDefender249 <PurpleDefender249@users.noreply.github.com>
+Bugs: https://github.com/PurpleDefender249/beebox/issues
+Installed-Size: 5488
+Depends: systemd
+Recommends: libnotify-bin
+Suggests: smartmontools
+Filename: pool/main/b/beebox/beebox_0.4.0_arm64.deb
+Size: 2168098
+MD5sum: 25c7364876ae8b7f4ce1c1a90f902bf1
+SHA1: 1fa68125a97b2c40340552781ec3bc5f10e07878
+SHA256: ad8510deaffc5eaad2d8f6f995524cfc28d7dddf1eeaca903ec56259d8eac7cc
+SHA512: 9608173e0ffc49caf7537803a945591a8d69b6d499156e2efaff570b0e18abd617854d0794c5ad73a349fcc7c48a3f11a1dc5c0944e97ad843e780a9e72e4935
+Homepage: https://github.com/PurpleDefender249/beebox
+Description: Flight recorder that explains why a Linux computer crashed or froze
+ Keeps a crash-safe rolling recording of memory, stalls, temperatures,
+ battery and kernel warnings, and after an unexpected shutdown writes a
+ plain-language report of what most likely happened and what to do.
+

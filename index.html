@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BeeBox packages</title>
+<style>
+body{font:16px/1.55 system-ui,sans-serif;max-width:46rem;margin:2.5rem auto;padding:0 1.25rem;color:#1d2125}
+h1{border-bottom:6px solid #f5b301;padding-bottom:.3rem}code,pre{font-family:ui-monospace,monospace}
+pre{background:#f3f4f6;padding:.9rem 1rem;border-radius:8px;overflow-x:auto}
+@media (prefers-color-scheme:dark){body{background:#16191d;color:#e7e9ec}pre{background:#23272c}a{color:#f5b301}}
+</style></head><body>
+<h1>BeeBox 0.4.0</h1>
+<p>A flight recorder for Linux that explains why your computer crashed, froze or lost power.
+Project page: <a href="https://github.com/PurpleDefender249/beebox">github.com/PurpleDefender249/beebox</a>.</p>
+<h2>Install</h2>
+<pre>curl -fsSL https://purpledefender249.github.io/beebox/install.sh | sh</pre>
+<p>Debian, Ubuntu, Kali and Mint get the APT repository and Fedora gets the DNF repository, so updates
+arrive with normal system updates. Arch Linux gets the latest release package, checked against its signed checksums.</p>
+<h2>Or add the repository yourself</h2>
+<p>Debian, Ubuntu, Kali, Mint:</p>
+<pre>sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://purpledefender249.github.io/beebox/beebox.gpg | sudo tee /etc/apt/keyrings/beebox.gpg &gt;/dev/null
+curl -fsSL https://purpledefender249.github.io/beebox/beebox.sources | sudo tee /etc/apt/sources.list.d/beebox.sources &gt;/dev/null
+sudo apt update &amp;&amp; sudo apt install beebox</pre>
+<p>Fedora:</p>
+<pre>sudo curl -fsSL -o /etc/yum.repos.d/beebox.repo https://purpledefender249.github.io/beebox/beebox.repo
+sudo dnf install beebox</pre>
+<p>Packages are signed with the key <code>94A9D8EEAA1F71D9CCA2021AFAA128BD0534DBC4</code>.</p>
+</body></html>

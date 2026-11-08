@@ -1,0 +1,32 @@
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Sun, 08 Nov 2026 15:03:28 +0000
+Description: BeeBox flight recorder
+Label: BeeBox
+Origin: BeeBox
+Suite: stable
+MD5Sum:
+ 34a538e88262c7e15475cbad9f804b9c              178 Release
+ 7aeed7ec4f6526b061d318b64e96679b             1016 main/binary-amd64/Packages
+ 0463c11a33d248684fd2bc93bca79563              665 main/binary-amd64/Packages.gz
+ eed0fe5e5ca0d748b09e9d96bbe8f6e1             1016 main/binary-arm64/Packages
+ 478e442abe1b0e2774b63560d5350589              663 main/binary-arm64/Packages.gz
+SHA1:
+ 6f36e62235ec65697e8554749afc4bb504e7cbd7              178 Release
+ 6a098d2b1e3df10feeffce2ca012d11736e9d9f8             1016 main/binary-amd64/Packages
+ 2780c1907872303eae291b7c189e9922cd96038e              665 main/binary-amd64/Packages.gz
+ 319616c84385da27a668748aa7d18c78e58ccb11             1016 main/binary-arm64/Packages
+ 97440e154acf85fe0620d17fab3974e0a3817e9c              663 main/binary-arm64/Packages.gz
+SHA256:
+ 4b0c2939d23a5dda845469646ff9610f6c141fd23ac4094151af8d00038d1372              178 Release
+ 9deb67c2db82aa0ffe6cce4bb8b81249ddc72592eea62824cc83803c32362ad4             1016 main/binary-amd64/Packages
+ b59ebd56fcc82b4540aaaa52aff7af2a2c9cf4fcb0b86e959a2913347b91d844              665 main/binary-amd64/Packages.gz
+ 94cc5a78aefd46c4a4796f29f984ec611e33b07e7128e17b8c6d3e014fde4e2c             1016 main/binary-arm64/Packages
+ b7580ce9295db692a685d9429164a64791aff840fdcb094a38085e53820d7674              663 main/binary-arm64/Packages.gz
+SHA512:
+ cc7321de45908d331e4187b980368d9b375fc04876d7306b92a41a35c2d99be204e72edfd0d2075f3bbfe7238243e34dbeeda5bedf13585374a78e1f5b4deb73              178 Release
+ fb3a9b24b7812b47ba0c238dcf288193bed2433469280a86661eb554e4245f7bb6df270b8462069baf122333b444e4fa37d7e13b91eba0b6b3d3526911773a18             1016 main/binary-amd64/Packages
+ fafe6567353177f45745ba6ed60f6184a7bd36a843fa474ea9edfadc9ba252e631db74e0463ce8fa00a4f7b1dd9ce01af616c01fa83958fe81c65be020b3f294              665 main/binary-amd64/Packages.gz
+ 80c7569e958a4e914205d22d232f557a509ae71b2cf69aaee2527c71ab582f8f7cf2308e925e0aa58e9e14d4ac2d4dbd79d12d1090e91842b829b5e418c26dba             1016 main/binary-arm64/Packages
+ 96a9315bab253e1a2dbe137f945bc3451eac19d9c7d2cbb9380b72dfe54c14aa2c38e9cb93e7628655b66eb738c51d0bd3d74d4792c25470080dbd4ba7503e40              663 main/binary-arm64/Packages.gz
