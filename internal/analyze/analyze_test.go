@@ -280,3 +280,21 @@ func TestBusyCPUThenSuddenStop(t *testing.T) {
 		t.Fatalf("x-www-browser should display as Web browser: %+v", r.TopMem)
 	}
 }
+
+// systemd-oomd is a separate package on the Debian family, and Kali leaves
+// new services disabled, so the command must install and then enable it.
+func TestOOMProtectorCommand(t *testing.T) {
+	for _, c := range []struct {
+		env  analyze.Env
+		want string
+	}{
+		{analyze.Env{PkgManager: "apt"}, "sudo apt install -y systemd-oomd && sudo systemctl enable --now systemd-oomd"},
+		{analyze.Env{PkgManager: "apt", HasOOMD: true}, "sudo systemctl enable --now systemd-oomd"},
+		{analyze.Env{PkgManager: "dnf"}, "sudo dnf install -y systemd-oomd-defaults && sudo systemctl enable --now systemd-oomd"},
+		{analyze.Env{PkgManager: "pacman"}, "sudo systemctl enable --now systemd-oomd"},
+	} {
+		if got := c.env.OOMProtectorCommand(); got != c.want {
+			t.Errorf("%+v: got %q, want %q", c.env, got, c.want)
+		}
+	}
+}

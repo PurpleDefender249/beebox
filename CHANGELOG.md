@@ -14,6 +14,9 @@ All notable changes are listed here. The format follows
   `sudo systemctl enable --now beebox` once.
 - The published one-line installer always points at the address it is
   served from, and says clearly which download failed if one does.
+- `beebox doctor` and reports give a working command to turn on
+  out-of-memory protection on Debian, Ubuntu and Kali, where systemd-oomd is
+  a separate package (and Kali leaves new services switched off).
 
 ### Added
 

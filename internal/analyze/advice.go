@@ -14,7 +14,40 @@ func DetectEnv(procDir string) Env {
 	if procDir == "" {
 		procDir = "/proc"
 	}
-	return Env{PkgManager: detectPkgManager("/etc/os-release"), OOMProtector: detectOOMProtector(procDir), CrashLogs: pstore.Backend() != ""}
+	return Env{
+		PkgManager:   detectPkgManager("/etc/os-release"),
+		OOMProtector: detectOOMProtector(procDir),
+		CrashLogs:    pstore.Backend() != "",
+		HasOOMD:      unitInstalled("systemd-oomd.service"),
+	}
+}
+
+// unitInstalled reports whether a systemd unit file exists in the usual places.
+func unitInstalled(name string) bool {
+	for _, dir := range []string{"/etc/systemd/system", "/usr/lib/systemd/system", "/lib/systemd/system"} {
+		if _, err := os.Stat(dir + "/" + name); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// OOMProtectorCommand returns the command that turns on systemd-oomd here:
+// installing it first where it is a separate package. It always ends with
+// "systemctl enable --now", because some distributions (Kali) leave newly
+// installed services switched off.
+func (e Env) OOMProtectorCommand() string {
+	const enable = "sudo systemctl enable --now systemd-oomd"
+	if e.HasOOMD {
+		return enable
+	}
+	switch e.PkgManager {
+	case "apt":
+		return "sudo apt install -y systemd-oomd && " + enable
+	case "dnf":
+		return "sudo dnf install -y systemd-oomd-defaults && " + enable
+	}
+	return enable
 }
 
 func detectPkgManager(osRelease string) string {

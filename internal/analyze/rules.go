@@ -305,7 +305,7 @@ func (c *ruleCtx) oomAdvice() []report.Advice {
 	var a []report.Advice
 	switch c.in.Env.OOMProtector {
 	case "":
-		a = append(a, adv("Turn on early out-of-memory protection, so one greedy app gets closed instead of the whole system freezing.", "sudo systemctl enable --now systemd-oomd"))
+		a = append(a, adv("Turn on early out-of-memory protection, so one greedy app gets closed instead of the whole system freezing.", c.in.Env.OOMProtectorCommand()))
 		if cmd := c.in.Env.install("earlyoom"); cmd != "" {
 			a = append(a, adv("If systemd-oomd is not available on your system, install earlyoom instead.", cmd+" && sudo systemctl enable --now earlyoom"))
 		}

@@ -44,7 +44,13 @@ common_checks() {
     page=$(beebox view --sample --print-path)
     grep -q 'Content-Security-Policy' "$page" || fail "sample report page is wrong"
     if command -v systemd-analyze >/dev/null 2>&1; then
-        systemd-analyze verify --man=no /usr/lib/systemd/system/beebox.service
+        # Only judge BeeBox's own unit where systemd supports that (250+).
+        recursive=''
+        if systemd-analyze --help 2>/dev/null | grep -q -- '--recursive-errors'; then
+            recursive='--recursive-errors=no'
+        fi
+        # shellcheck disable=SC2086 # $recursive is empty or one option
+        systemd-analyze verify --man=no $recursive /usr/lib/systemd/system/beebox.service
         systemd-analyze security --offline=true --threshold=2 /usr/lib/systemd/system/beebox.service | tail -n 1
     fi
 }

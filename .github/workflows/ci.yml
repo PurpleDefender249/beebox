@@ -94,9 +94,13 @@ jobs:
         run: lintian --fail-on error,warning build/dist/*.deb
 
       - name: Verify the systemd unit
+        # --recursive-errors=no: judge only BeeBox's unit. By default verify
+        # also fails on problems in any unit it pulls in (multi-user.target and
+        # everything below it), and the runner image has some of its own.
         run: |
           sudo install -m755 build/linux-amd64/beebox /usr/bin/beebox
-          systemd-analyze verify --man=no packaging/systemd/beebox.service
+          systemd-analyze --version | head -n 1
+          systemd-analyze verify --man=no --recursive-errors=no packaging/systemd/beebox.service
           systemd-analyze security --offline=true --threshold=2 packaging/systemd/beebox.service
 
       # GitHub's runners boot with systemd, so the steps below exercise the

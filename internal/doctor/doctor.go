@@ -169,7 +169,7 @@ func checkOOM() Check {
 	c.Status = Warn
 	c.Result = "None running"
 	c.Why = "When memory runs out, Linux can freeze for minutes before it closes anything. A protector closes the greediest app early instead."
-	c.Fix = "sudo systemctl enable --now systemd-oomd"
+	c.Fix = env.OOMProtectorCommand()
 	return c
 }
 

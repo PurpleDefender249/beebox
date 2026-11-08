@@ -40,6 +40,9 @@ type Env struct {
 	// a reboot (pstore). Without it a kernel crash leaves no trace and looks
 	// exactly like a power cut, so BeeBox must not claim to tell them apart.
 	CrashLogs bool
+	// HasOOMD is true when the systemd-oomd unit is installed (it is a
+	// separate package on Debian, Ubuntu and Kali).
+	HasOOMD bool
 }
 
 // minVerdict is the confidence below which BeeBox says it is unsure.
